@@ -12,7 +12,6 @@ const CounterSchema = new Schema<ICounter>(
       type: Schema.Types.ObjectId,
       ref: 'Admin',
       required: true,
-      index: true,
     },
     name: {
       type: String,

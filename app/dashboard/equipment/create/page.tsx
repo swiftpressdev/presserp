@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentBSDate } from '@/lib/dateUtils';
+import { EquipmentStatus } from '@/lib/types';
 import toast from 'react-hot-toast';
 
 export default function CreateEquipmentPage() {
@@ -14,7 +15,7 @@ export default function CreateEquipmentPage() {
   const [formData, setFormData] = useState({
     equipmentName: '',
     size: '',
-    status: '',
+    status: EquipmentStatus.OPERATIONAL,
     lastMaintainedDate: getCurrentBSDate(),
   });
 
@@ -97,14 +98,18 @@ export default function CreateEquipmentPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Status <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 required
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as EquipmentStatus })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Operational, Under Maintenance"
-              />
+              >
+                {Object.values(EquipmentStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

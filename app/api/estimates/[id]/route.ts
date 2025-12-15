@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Estimate from '@/models/Estimate';
+import Job from '@/models/Job';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -14,7 +15,8 @@ const particularSchema = z.object({
 
 const updateEstimateSchema = z.object({
   clientId: z.string().min(1, 'Client is required'),
-  jobId: z.string().optional(),
+  jobId: z.string().min(1, 'Job is required'),
+  estimateDate: z.string().min(1, 'Estimate date is required'),
   particulars: z.array(particularSchema).min(1, 'At least one particular is required'),
   hasVAT: z.boolean(),
 });
@@ -32,9 +34,38 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateEstimateSchema.parse(body);
 
+    // Get job details if jobId is provided
+    const job = await Job.findOne({ _id: validatedData.jobId, adminId });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Calculate totals
+    const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
+
+    let subtotal = 0;
+    let vatAmount = 0;
+    let grandTotal = total;
+
+    if (validatedData.hasVAT) {
+      subtotal = Number((total / 1.13).toFixed(2));
+      vatAmount = Number((subtotal * 0.13).toFixed(2));
+      grandTotal = Number((subtotal + vatAmount).toFixed(2));
+    }
+
     const estimate = await Estimate.findOneAndUpdate(
       { _id: id, adminId },
-      validatedData,
+      {
+        ...validatedData,
+        totalBWPages: job.totalBWPages,
+        totalColorPages: job.totalColorPages,
+        totalPages: job.totalPages,
+        paperSize: job.paperSize,
+        total,
+        subtotal: validatedData.hasVAT ? subtotal : undefined,
+        vatAmount: validatedData.hasVAT ? vatAmount : undefined,
+        grandTotal,
+      },
       { new: true }
     ).populate('clientId', 'clientName')
      .populate('jobId', 'jobNo jobName');

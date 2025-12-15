@@ -5,7 +5,6 @@ export const baseSchemaFields = {
     type: Schema.Types.ObjectId,
     ref: 'Admin',
     required: true,
-    index: true,
   },
   createdBy: {
     type: String,

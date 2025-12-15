@@ -50,9 +50,14 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateJobSchema.parse(body);
 
+    const totalPages = validatedData.totalBWPages + validatedData.totalColorPages;
+
     const job = await Job.findOneAndUpdate(
       { _id: id, adminId },
-      validatedData,
+      {
+        ...validatedData,
+        totalPages,
+      },
       { new: true }
     ).populate('clientId', 'clientName')
      .populate('paperId', 'paperName')

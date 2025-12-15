@@ -6,7 +6,8 @@ import { z } from 'zod';
 
 const updateEquipmentSchema = z.object({
   equipmentName: z.string().min(1, 'Equipment name is required'),
-  equipmentType: z.string().min(1, 'Equipment type is required'),
+  size: z.string().min(1, 'Size is required'),
+  status: z.string().min(1, 'Status is required'),
   lastMaintainedDate: z.string().min(1, 'Last maintained date is required'),
 });
 

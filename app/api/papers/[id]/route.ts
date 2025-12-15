@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Paper from '@/models/Paper';
 import { requireAuth, getAdminId } from '@/lib/auth';
+import { PaperType } from '@/lib/types';
 import { z } from 'zod';
 
 const updatePaperSchema = z.object({
   paperName: z.string().min(1, 'Paper name is required'),
-  paperType: z.string().min(1, 'Paper type is required'),
+  paperType: z.nativeEnum(PaperType),
+  paperTypeOther: z.string().optional(),
   paperSize: z.string().min(1, 'Paper size is required'),
-  weight: z.coerce.number().min(1, 'Weight is required'),
+  paperWeight: z.string().min(1, 'Paper weight is required'),
 });
 
 export async function PUT(

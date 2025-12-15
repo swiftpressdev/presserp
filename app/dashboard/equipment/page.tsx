@@ -7,11 +7,11 @@ import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatBSDate } from '@/lib/dateUtils';
+import { EquipmentStatus } from '@/lib/types';
 
 interface Equipment {
   _id: string;
   equipmentName: string;
-  equipmentType: string;
   size: string;
   status: string;
   lastMaintainedDate: string;
@@ -24,6 +24,12 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    equipmentName: '',
+    size: '',
+    status: EquipmentStatus.OPERATIONAL,
+    lastMaintainedDate: '',
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -56,6 +62,12 @@ export default function EquipmentPage() {
 
   const handleEdit = (item: Equipment) => {
     setEditingEquipment(item);
+    setEditFormData({
+      equipmentName: item.equipmentName,
+      size: item.size,
+      status: item.status as EquipmentStatus,
+      lastMaintainedDate: item.lastMaintainedDate,
+    });
     setShowEditModal(true);
   };
 
@@ -69,11 +81,7 @@ export default function EquipmentPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          equipmentName: editingEquipment.equipmentName,
-          equipmentType: editingEquipment.equipmentType,
-          lastMaintainedDate: editingEquipment.lastMaintainedDate,
-        }),
+        body: JSON.stringify(editFormData),
       });
 
       const data = await response.json();
@@ -210,28 +218,43 @@ export default function EquipmentPage() {
                     <label className="block text-sm font-medium text-gray-700">Equipment Name</label>
                     <input
                       type="text"
-                      value={editingEquipment.equipmentName}
-                      onChange={(e) => setEditingEquipment({ ...editingEquipment, equipmentName: e.target.value })}
+                      value={editFormData.equipmentName}
+                      onChange={(e) => setEditFormData({ ...editFormData, equipmentName: e.target.value })}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Equipment Type</label>
+                    <label className="block text-sm font-medium text-gray-700">Size</label>
                     <input
                       type="text"
-                      value={editingEquipment.equipmentType}
-                      onChange={(e) => setEditingEquipment({ ...editingEquipment, equipmentType: e.target.value })}
+                      value={editFormData.size}
+                      onChange={(e) => setEditFormData({ ...editFormData, size: e.target.value })}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                       required
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <select
+                      value={editFormData.status}
+                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as EquipmentStatus })}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    >
+                      {Object.values(EquipmentStatus).map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Last Maintained Date (BS)</label>
                     <input
                       type="text"
-                      value={editingEquipment.lastMaintainedDate}
-                      onChange={(e) => setEditingEquipment({ ...editingEquipment, lastMaintainedDate: e.target.value })}
+                      value={editFormData.lastMaintainedDate}
+                      onChange={(e) => setEditFormData({ ...editFormData, lastMaintainedDate: e.target.value })}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                       placeholder="YYYY-MM-DD"
                       required

@@ -52,3 +52,10 @@ export enum AdditionalService {
   NUMBERING = 'Numbering',
   PERFECTING = 'Perfecting',
 }
+
+export enum EquipmentStatus {
+  OPERATIONAL = 'Operational',
+  UNDER_MAINTENANCE = 'Under Maintenance',
+  OUT_OF_SERVICE = 'Out of Service',
+  REPAIR = 'Repair',
+}

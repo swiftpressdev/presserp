@@ -8,13 +8,14 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { generateEstimatePDF } from '@/lib/pdfUtils';
 import { formatBSDate } from '@/lib/dateUtils';
+import ParticularsTable, { Particular } from '@/components/ParticularsTable';
 
 interface Estimate {
   _id: string;
   estimateNumber: string;
   estimateDate: string;
-  clientId: { clientName: string };
-  jobId: { jobNo: string; jobName: string };
+  clientId: string | { _id: string; clientName: string };
+  jobId: string | { _id: string; jobNo: string; jobName: string };
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -27,11 +28,45 @@ interface Estimate {
   grandTotal: number;
 }
 
+interface Client {
+  _id: string;
+  clientName: string;
+}
+
+interface Job {
+  _id: string;
+  jobNo: string;
+  jobName: string;
+  clientId: string | { _id: string; clientName: string };
+  totalBWPages: number;
+  totalColorPages: number;
+  totalPages: number;
+  paperSize: string;
+}
+
 export default function EstimatesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [editFormData, setEditFormData] = useState({
+    clientId: '',
+    jobId: '',
+    estimateDate: '',
+  });
+  const [jobDetails, setJobDetails] = useState({
+    totalBWPages: 0,
+    totalColorPages: 0,
+    totalPages: 0,
+    paperSize: '',
+  });
+  const [editParticulars, setEditParticulars] = useState<Particular[]>([]);
+  const [editHasVAT, setEditHasVAT] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -42,6 +77,7 @@ export default function EstimatesPage() {
   useEffect(() => {
     if (user) {
       fetchEstimates();
+      fetchDropdownData();
     }
   }, [user]);
 
@@ -62,12 +98,163 @@ export default function EstimatesPage() {
     }
   };
 
+  const fetchDropdownData = async () => {
+    try {
+      const [clientsRes, jobsRes] = await Promise.all([
+        fetch('/api/clients'),
+        fetch('/api/jobs'),
+      ]);
+
+      const [clientsData, jobsData] = await Promise.all([
+        clientsRes.json(),
+        jobsRes.json(),
+      ]);
+
+      setClients(clientsData.clients || []);
+      setAllJobs(jobsData.jobs || []);
+    } catch (error) {
+      console.error('Failed to fetch dropdown data:', error);
+    }
+  };
+
+  const handleEdit = (estimate: Estimate) => {
+    setEditingEstimate(estimate);
+    
+    // Extract IDs from populated objects
+    const clientId = typeof estimate.clientId === 'object' ? estimate.clientId._id.toString() : estimate.clientId.toString();
+    const jobId = typeof estimate.jobId === 'object' ? estimate.jobId._id.toString() : estimate.jobId.toString();
+
+    setEditFormData({
+      clientId,
+      jobId,
+      estimateDate: estimate.estimateDate,
+    });
+
+    // Filter jobs for selected client
+    const filtered = allJobs.filter((job) => {
+      const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+      return jobClientId === clientId;
+    });
+    setFilteredJobs(filtered);
+
+    // Get job details
+    const selectedJob = allJobs.find((job) => job._id === jobId);
+    if (selectedJob) {
+      setJobDetails({
+        totalBWPages: selectedJob.totalBWPages,
+        totalColorPages: selectedJob.totalColorPages,
+        totalPages: selectedJob.totalPages,
+        paperSize: selectedJob.paperSize,
+      });
+    } else {
+      setJobDetails({
+        totalBWPages: estimate.totalBWPages,
+        totalColorPages: estimate.totalColorPages,
+        totalPages: estimate.totalPages,
+        paperSize: estimate.paperSize,
+      });
+    }
+
+    // Convert particulars to match Particular interface
+    const convertedParticulars: Particular[] = estimate.particulars.map((p: any) => ({
+      sn: p.sn || 0,
+      particulars: p.particulars || '',
+      quantity: p.quantity || 0,
+      rate: p.rate || 0,
+      amount: p.amount || 0,
+    }));
+    setEditParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
+      { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
+    ]);
+    setEditHasVAT(estimate.hasVAT);
+    setShowEditModal(true);
+  };
+
+  const handleClientChange = (clientId: string) => {
+    setEditFormData({ ...editFormData, clientId, jobId: '' });
+    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '' });
+
+    const filtered = allJobs.filter((job) => {
+      const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+      return jobClientId === clientId;
+    });
+    setFilteredJobs(filtered);
+  };
+
+  const handleJobChange = (jobId: string) => {
+    setEditFormData({ ...editFormData, jobId });
+
+    const selectedJob = allJobs.find((job) => job._id === jobId);
+    if (selectedJob) {
+      setJobDetails({
+        totalBWPages: selectedJob.totalBWPages,
+        totalColorPages: selectedJob.totalColorPages,
+        totalPages: selectedJob.totalPages,
+        paperSize: selectedJob.paperSize,
+      });
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEstimate) return;
+
+    // Filter out empty rows
+    const validParticulars = editParticulars.filter(
+      (p) => p.particulars.trim() && p.quantity > 0 && p.rate > 0
+    );
+
+    if (validParticulars.length === 0) {
+      toast.error('Please add at least one particular with all fields filled');
+      return;
+    }
+
+    // Re-index the SN for valid particulars
+    const indexedParticulars = validParticulars.map((p, index) => ({
+      ...p,
+      sn: index + 1,
+      quantity: Number(p.quantity),
+      rate: Number(p.rate),
+      amount: Number(p.amount),
+    }));
+
+    try {
+      const response = await fetch(`/api/estimates/${editingEstimate._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...editFormData,
+          particulars: indexedParticulars,
+          hasVAT: editHasVAT,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update estimate');
+      }
+
+      toast.success('Estimate updated successfully');
+      setShowEditModal(false);
+      setEditingEstimate(null);
+      fetchEstimates();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update estimate');
+    }
+  };
+
   const handleExportPDF = (estimate: Estimate) => {
+    const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
+    const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
+    
     generateEstimatePDF({
       estimateNumber: estimate.estimateNumber,
       estimateDate: formatBSDate(estimate.estimateDate),
-      clientName: estimate.clientId.clientName,
-      jobNumber: estimate.jobId.jobNo,
+      clientName,
+      jobNumber,
       totalBWPages: estimate.totalBWPages,
       totalColorPages: estimate.totalColorPages,
       totalPages: estimate.totalPages,
@@ -167,15 +354,21 @@ export default function EstimatesPage() {
                       {formatBSDate(estimate.estimateDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {estimate.clientId.clientName}
+                      {typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {estimate.jobId.jobNo}
+                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {estimate.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
+                      <button
+                        onClick={() => handleEdit(estimate)}
+                        className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleExportPDF(estimate)}
                         className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
@@ -193,6 +386,136 @@ export default function EstimatesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && editingEstimate && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-5xl shadow-lg rounded-md bg-white mb-10">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Estimate</h3>
+                <form onSubmit={handleUpdate} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Client</label>
+                      <select
+                        required
+                        value={editFormData.clientId}
+                        onChange={(e) => handleClientChange(e.target.value)}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">Select Client</option>
+                        {clients.map((client) => (
+                          <option key={client._id} value={client._id}>
+                            {client.clientName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Job Number</label>
+                      <select
+                        required
+                        value={editFormData.jobId}
+                        onChange={(e) => handleJobChange(e.target.value)}
+                        disabled={!editFormData.clientId}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                      >
+                        <option value="">Select Job</option>
+                        {filteredJobs.map((job) => (
+                          <option key={job._id} value={job._id}>
+                            {job.jobNo} - {job.jobName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Estimate Date (BS)</label>
+                      <input
+                        type="text"
+                        required
+                        value={editFormData.estimateDate}
+                        onChange={(e) => setEditFormData({ ...editFormData, estimateDate: e.target.value })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        placeholder="YYYY-MM-DD"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Paper Size</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={jobDetails.paperSize}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Total B/W Pages</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={jobDetails.totalBWPages}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Total Color Pages</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={jobDetails.totalColorPages}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Total Pages</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={jobDetails.totalPages}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-900 mb-4">Particulars</h4>
+                    <ParticularsTable
+                      particulars={editParticulars}
+                      onChange={setEditParticulars}
+                      hasVAT={editHasVAT}
+                      onVATChange={setEditHasVAT}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setEditingEstimate(null);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      Update
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         )}
       </div>

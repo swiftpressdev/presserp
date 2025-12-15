@@ -33,9 +33,28 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateQuotationSchema.parse(body);
 
+    // Calculate totals
+    const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
+
+    let subtotal = 0;
+    let vatAmount = 0;
+    let grandTotal = total;
+
+    if (validatedData.hasVAT) {
+      subtotal = Number((total / 1.13).toFixed(2));
+      vatAmount = Number((subtotal * 0.13).toFixed(2));
+      grandTotal = Number((subtotal + vatAmount).toFixed(2));
+    }
+
     const quotation = await Quotation.findOneAndUpdate(
       { _id: id, adminId },
-      validatedData,
+      {
+        ...validatedData,
+        total,
+        subtotal: validatedData.hasVAT ? subtotal : undefined,
+        vatAmount: validatedData.hasVAT ? vatAmount : undefined,
+        grandTotal,
+      },
       { new: true }
     );
 

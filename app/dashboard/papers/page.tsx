@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { PaperType } from '@/lib/types';
 
 interface Paper {
   _id: string;
@@ -13,7 +14,7 @@ interface Paper {
   paperType: string;
   paperTypeOther?: string;
   paperSize: string;
-  weight: number;
+  paperWeight: string;
 }
 
 export default function PapersPage() {
@@ -71,8 +72,9 @@ export default function PapersPage() {
         body: JSON.stringify({
           paperName: editingPaper.paperName,
           paperType: editingPaper.paperType,
+          paperTypeOther: editingPaper.paperTypeOther,
           paperSize: editingPaper.paperSize,
-          weight: editingPaper.weight,
+          paperWeight: editingPaper.paperWeight,
         }),
       });
 
@@ -178,7 +180,7 @@ export default function PapersPage() {
                       {paper.paperSize}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.weight}
+                      {paper.paperWeight}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button
@@ -220,14 +222,31 @@ export default function PapersPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Paper Type</label>
-                    <input
-                      type="text"
+                    <select
                       value={editingPaper.paperType}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, paperType: e.target.value })}
+                      onChange={(e) => setEditingPaper({ ...editingPaper, paperType: e.target.value as PaperType })}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                       required
-                    />
+                    >
+                      {Object.values(PaperType).map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  {editingPaper.paperType === PaperType.OTHERS && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Specify Other Type</label>
+                      <input
+                        type="text"
+                        value={editingPaper.paperTypeOther || ''}
+                        onChange={(e) => setEditingPaper({ ...editingPaper, paperTypeOther: e.target.value })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        required={editingPaper.paperType === PaperType.OTHERS}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Paper Size</label>
                     <input
@@ -239,12 +258,13 @@ export default function PapersPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Weight (GSM)</label>
+                    <label className="block text-sm font-medium text-gray-700">Paper Weight</label>
                     <input
-                      type="number"
-                      value={editingPaper.weight}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, weight: Number(e.target.value) })}
+                      type="text"
+                      value={editingPaper.paperWeight}
+                      onChange={(e) => setEditingPaper({ ...editingPaper, paperWeight: e.target.value })}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="e.g., 80gsm"
                       required
                     />
                   </div>
