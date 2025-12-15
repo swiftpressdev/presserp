@@ -32,8 +32,10 @@ export async function POST(request: NextRequest) {
 
     await resetCounter(adminId, counterName);
 
+    const counterTypeCapitalized = validatedData.counterType.charAt(0).toUpperCase() + validatedData.counterType.slice(1);
+
     return NextResponse.json(
-      { message: `${validatedData.counterType} counter reset successfully` },
+      { message: `${counterTypeCapitalized} counter reset successfully` },
       { status: 200 }
     );
   } catch (error: any) {
