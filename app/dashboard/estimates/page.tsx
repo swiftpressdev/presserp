@@ -337,6 +337,9 @@ export default function EstimatesPage() {
                     Job No
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Job Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Grand Total
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -358,6 +361,9 @@ export default function EstimatesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobName : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {estimate.grandTotal.toFixed(2)}
@@ -430,6 +436,16 @@ export default function EstimatesPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Job Name</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={editFormData.jobId ? (allJobs.find(j => j._id === editFormData.jobId)?.jobName || '') : ''}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                      />
                     </div>
 
                     <div>

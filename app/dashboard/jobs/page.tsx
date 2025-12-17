@@ -15,6 +15,11 @@ import {
   BindingType,
   StitchType,
   AdditionalService,
+  PlateFarmaType,
+  PlateSizeType,
+  NormalType,
+  PageColorType,
+  BookSizeType,
 } from '@/lib/types';
 
 interface Job {
@@ -32,10 +37,20 @@ interface Job {
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
+  pageColor?: string;
+  pageColorOther?: string;
+  bookSize?: string;
+  bookSizeOther?: string;
+  totalPlate?: string;
+  totalPlateOther?: string;
+  totalFarma?: string;
+  totalFarmaOther?: string;
   plateBy: string;
   plateFrom?: string;
   plateSize?: string;
+  plateSizeOther?: string;
   laminationThermal?: string;
+  normal?: string;
   folding: boolean;
   binding?: string;
   stitch?: string;
@@ -83,11 +98,21 @@ export default function JobsPage() {
     paperSize: '',
     totalBWPages: 0,
     totalColorPages: 0,
+    pageColor: '' as PageColorType | '',
+    pageColorOther: '',
+    bookSize: '' as BookSizeType | '',
+    bookSizeOther: '',
+    totalPlate: '' as PlateFarmaType | '',
+    totalPlateOther: '',
+    totalFarma: '' as PlateFarmaType | '',
+    totalFarmaOther: '',
     plateBy: PlateBy.COMPANY,
     plateFrom: '',
-    plateSize: '',
+    plateSize: '' as PlateSizeType | '',
+    plateSizeOther: '',
     machineId: '',
     laminationThermal: '' as LaminationType | '',
+    normal: '' as NormalType | '',
     folding: false,
     binding: '' as BindingType | '',
     stitch: '' as StitchType | '',
@@ -172,11 +197,21 @@ export default function JobsPage() {
       paperSize: job.paperSize,
       totalBWPages: job.totalBWPages,
       totalColorPages: job.totalColorPages,
+      pageColor: (job.pageColor as PageColorType) || '',
+      pageColorOther: job.pageColorOther || '',
+      bookSize: (job.bookSize as BookSizeType) || '',
+      bookSizeOther: job.bookSizeOther || '',
+      totalPlate: (job.totalPlate as PlateFarmaType) || '',
+      totalPlateOther: job.totalPlateOther || '',
+      totalFarma: (job.totalFarma as PlateFarmaType) || '',
+      totalFarmaOther: job.totalFarmaOther || '',
       plateBy: job.plateBy as PlateBy,
       plateFrom: job.plateFrom || '',
-      plateSize: job.plateSize || '',
+      plateSize: (job.plateSize as PlateSizeType) || '',
+      plateSizeOther: job.plateSizeOther || '',
       machineId,
       laminationThermal: (job.laminationThermal as LaminationType) || '',
+      normal: (job.normal as NormalType) || '',
       folding: job.folding,
       binding: (job.binding as BindingType) || '',
       stitch: (job.stitch as StitchType) || '',
@@ -223,7 +258,18 @@ export default function JobsPage() {
     try {
       const submitData = {
         ...editFormData,
+        pageColor: editFormData.pageColor || undefined,
+        pageColorOther: editFormData.pageColor === PageColorType.OTHER ? editFormData.pageColorOther : undefined,
+        bookSize: editFormData.bookSize || undefined,
+        bookSizeOther: editFormData.bookSize === BookSizeType.OTHER ? editFormData.bookSizeOther : undefined,
+        totalPlate: editFormData.totalPlate || undefined,
+        totalPlateOther: editFormData.totalPlate === PlateFarmaType.OTHER ? editFormData.totalPlateOther : undefined,
+        totalFarma: editFormData.totalFarma || undefined,
+        totalFarmaOther: editFormData.totalFarma === PlateFarmaType.OTHER ? editFormData.totalFarmaOther : undefined,
+        plateSize: editFormData.plateSize || undefined,
+        plateSizeOther: editFormData.plateSize === PlateSizeType.OTHER ? editFormData.plateSizeOther : undefined,
         laminationThermal: editFormData.laminationThermal || undefined,
+        normal: editFormData.normal || undefined,
         binding: editFormData.binding || undefined,
         stitch: editFormData.stitch || undefined,
         relatedToJobId: editFormData.relatedToJobId || undefined,
@@ -257,6 +303,11 @@ export default function JobsPage() {
     const paperName = typeof job.paperId === 'object' ? job.paperId.paperName : '';
     const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '';
     const relatedToJobNo = typeof job.relatedToJobId === 'object' ? job.relatedToJobId.jobNo : undefined;
+    
+    // Format job types with (Cover) for Outer
+    const formattedJobTypes = job.jobTypes.map(type => 
+      type === JobType.OUTER ? `${type} (Cover)` : type
+    );
 
     generateJobPDF({
       jobNo: job.jobNo,
@@ -264,18 +315,28 @@ export default function JobsPage() {
       clientName,
       jobDate: formatBSDate(job.jobDate),
       deliveryDate: formatBSDate(job.deliveryDate),
-      jobTypes: job.jobTypes,
+      jobTypes: formattedJobTypes,
       quantity: job.quantity,
       paperName,
       paperSize: job.paperSize,
       totalBWPages: job.totalBWPages,
       totalColorPages: job.totalColorPages,
       totalPages: job.totalPages,
+      pageColor: job.pageColor,
+      pageColorOther: job.pageColorOther,
+      bookSize: job.bookSize,
+      bookSizeOther: job.bookSizeOther,
+      totalPlate: job.totalPlate,
+      totalPlateOther: job.totalPlateOther,
+      totalFarma: job.totalFarma,
+      totalFarmaOther: job.totalFarmaOther,
       plateBy: job.plateBy,
       plateFrom: job.plateFrom,
       plateSize: job.plateSize,
+      plateSizeOther: job.plateSizeOther,
       machineName,
       laminationThermal: job.laminationThermal,
+      normal: job.normal,
       folding: job.folding,
       binding: job.binding,
       stitch: job.stitch,
@@ -484,7 +545,7 @@ export default function JobsPage() {
                               onChange={() => handleJobTypeChange(type)}
                               className="rounded"
                             />
-                            <span>{type}</span>
+                            <span>{type}{type === JobType.OUTER ? ' (Cover)' : ''}</span>
                           </label>
                         ))}
                       </div>
@@ -569,6 +630,130 @@ export default function JobsPage() {
                     </div>
 
                     <div>
+                      <label className="block text-sm font-medium text-gray-700">Page Color</label>
+                      <select
+                        value={editFormData.pageColor}
+                        onChange={(e) => setEditFormData({ ...editFormData, pageColor: e.target.value as PageColorType | '', pageColorOther: '' })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">None</option>
+                        {Object.values(PageColorType).map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {editFormData.pageColor === PageColorType.OTHER && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Specify Page Color <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editFormData.pageColorOther}
+                          onChange={(e) => setEditFormData({ ...editFormData, pageColorOther: e.target.value })}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Book Size</label>
+                      <select
+                        value={editFormData.bookSize}
+                        onChange={(e) => setEditFormData({ ...editFormData, bookSize: e.target.value as BookSizeType | '', bookSizeOther: '' })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">None</option>
+                        {Object.values(BookSizeType).map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {editFormData.bookSize === BookSizeType.OTHER && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Specify Book Size <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editFormData.bookSizeOther}
+                          onChange={(e) => setEditFormData({ ...editFormData, bookSizeOther: e.target.value })}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Total Plate</label>
+                      <select
+                        value={editFormData.totalPlate}
+                        onChange={(e) => setEditFormData({ ...editFormData, totalPlate: e.target.value as PlateFarmaType | '', totalPlateOther: '' })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">None</option>
+                        {Object.values(PlateFarmaType).map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {editFormData.totalPlate === PlateFarmaType.OTHER && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Specify Total Plate <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editFormData.totalPlateOther}
+                          onChange={(e) => setEditFormData({ ...editFormData, totalPlateOther: e.target.value })}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Total Farma</label>
+                      <select
+                        value={editFormData.totalFarma}
+                        onChange={(e) => setEditFormData({ ...editFormData, totalFarma: e.target.value as PlateFarmaType | '', totalFarmaOther: '' })}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">None</option>
+                        {Object.values(PlateFarmaType).map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {editFormData.totalFarma === PlateFarmaType.OTHER && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Specify Total Farma <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editFormData.totalFarmaOther}
+                          onChange={(e) => setEditFormData({ ...editFormData, totalFarmaOther: e.target.value })}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+
+                    <div>
                       <label className="block text-sm font-medium text-gray-700">Plate By</label>
                       <select
                         required
@@ -596,13 +781,34 @@ export default function JobsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Plate Size</label>
-                      <input
-                        type="text"
+                      <select
                         value={editFormData.plateSize}
-                        onChange={(e) => setEditFormData({ ...editFormData, plateSize: e.target.value })}
+                        onChange={(e) => setEditFormData({ ...editFormData, plateSize: e.target.value as PlateSizeType | '', plateSizeOther: '' })}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
+                      >
+                        <option value="">None</option>
+                        {Object.values(PlateSizeType).map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    {editFormData.plateSize === PlateSizeType.OTHER && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Specify Plate Size <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editFormData.plateSizeOther}
+                          onChange={(e) => setEditFormData({ ...editFormData, plateSizeOther: e.target.value })}
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Machine</label>
@@ -632,6 +838,24 @@ export default function JobsPage() {
                       >
                         <option value="">None</option>
                         {Object.values(LaminationType).map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Normal</label>
+                      <select
+                        value={editFormData.normal}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, normal: e.target.value as NormalType | '' })
+                        }
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="">None</option>
+                        {Object.values(NormalType).map((type) => (
                           <option key={type} value={type}>
                             {type}
                           </option>

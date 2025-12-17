@@ -5,12 +5,14 @@ export enum CounterName {
   QUOTATION = 'quotation',
   JOB = 'job',
   ESTIMATE = 'estimate',
+  CHALLAN = 'challan',
 }
 
 const DEFAULT_PREFIX_MAP: Record<CounterName, string> = {
   [CounterName.QUOTATION]: 'Q',
   [CounterName.JOB]: 'J',
   [CounterName.ESTIMATE]: 'E',
+  [CounterName.CHALLAN]: 'C',
 };
 
 export async function getNextSequenceNumber(
@@ -36,6 +38,8 @@ export async function getNextSequenceNumber(
       prefix = settings.jobPrefix;
     } else if (counterName === CounterName.ESTIMATE && settings.estimatePrefix) {
       prefix = settings.estimatePrefix;
+    } else if (counterName === CounterName.CHALLAN && settings.challanPrefix) {
+      prefix = settings.challanPrefix;
     }
   }
   

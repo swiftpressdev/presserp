@@ -5,6 +5,7 @@ export interface ISettings extends Document {
   quotationPrefix: string;
   jobPrefix: string;
   estimatePrefix: string;
+  challanPrefix: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,11 @@ const SettingsSchema = new Schema<ISettings>(
     estimatePrefix: {
       type: String,
       default: 'E',
+      trim: true,
+    },
+    challanPrefix: {
+      type: String,
+      default: 'C',
       trim: true,
     },
   },

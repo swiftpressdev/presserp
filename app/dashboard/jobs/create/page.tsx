@@ -12,6 +12,11 @@ import {
   BindingType,
   StitchType,
   AdditionalService,
+  PlateFarmaType,
+  PlateSizeType,
+  NormalType,
+  PageColorType,
+  BookSizeType,
 } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -57,11 +62,21 @@ export default function CreateJobPage() {
     paperSize: '',
     totalBWPages: 0,
     totalColorPages: 0,
+    pageColor: '' as PageColorType | '',
+    pageColorOther: '',
+    bookSize: '' as BookSizeType | '',
+    bookSizeOther: '',
+    totalPlate: '' as PlateFarmaType | '',
+    totalPlateOther: '',
+    totalFarma: '' as PlateFarmaType | '',
+    totalFarmaOther: '',
     plateBy: PlateBy.COMPANY,
     plateFrom: '',
-    plateSize: '',
+    plateSize: '' as PlateSizeType | '',
+    plateSizeOther: '',
     machineId: '',
     laminationThermal: '' as LaminationType | '',
+    normal: '' as NormalType | '',
     folding: false,
     binding: '' as BindingType | '',
     stitch: '' as StitchType | '',
@@ -144,7 +159,18 @@ export default function CreateJobPage() {
     try {
       const submitData = {
         ...formData,
+        pageColor: formData.pageColor || undefined,
+        pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
+        bookSize: formData.bookSize || undefined,
+        bookSizeOther: formData.bookSize === BookSizeType.OTHER ? formData.bookSizeOther : undefined,
+        totalPlate: formData.totalPlate || undefined,
+        totalPlateOther: formData.totalPlate === PlateFarmaType.OTHER ? formData.totalPlateOther : undefined,
+        totalFarma: formData.totalFarma || undefined,
+        totalFarmaOther: formData.totalFarma === PlateFarmaType.OTHER ? formData.totalFarmaOther : undefined,
+        plateSize: formData.plateSize || undefined,
+        plateSizeOther: formData.plateSize === PlateSizeType.OTHER ? formData.plateSizeOther : undefined,
         laminationThermal: formData.laminationThermal || undefined,
+        normal: formData.normal || undefined,
         binding: formData.binding || undefined,
         stitch: formData.stitch || undefined,
         relatedToJobId: formData.relatedToJobId || undefined,
@@ -263,7 +289,7 @@ export default function CreateJobPage() {
                       onChange={() => handleJobTypeChange(type)}
                       className="rounded"
                     />
-                    <span>{type}</span>
+                    <span>{type}{type === JobType.OUTER ? ' (Cover)' : ''}</span>
                   </label>
                 ))}
               </div>
@@ -358,6 +384,130 @@ export default function CreateJobPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700">Page Color</label>
+              <select
+                value={formData.pageColor}
+                onChange={(e) => setFormData({ ...formData, pageColor: e.target.value as PageColorType | '', pageColorOther: '' })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {Object.values(PageColorType).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.pageColor === PageColorType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Page Color <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.pageColorOther}
+                  onChange={(e) => setFormData({ ...formData, pageColorOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Book Size</label>
+              <select
+                value={formData.bookSize}
+                onChange={(e) => setFormData({ ...formData, bookSize: e.target.value as BookSizeType | '', bookSizeOther: '' })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {Object.values(BookSizeType).map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.bookSize === BookSizeType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Book Size <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.bookSizeOther}
+                  onChange={(e) => setFormData({ ...formData, bookSizeOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Total Plate</label>
+              <select
+                value={formData.totalPlate}
+                onChange={(e) => setFormData({ ...formData, totalPlate: e.target.value as PlateFarmaType | '', totalPlateOther: '' })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {Object.values(PlateFarmaType).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.totalPlate === PlateFarmaType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Total Plate <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.totalPlateOther}
+                  onChange={(e) => setFormData({ ...formData, totalPlateOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Total Farma</label>
+              <select
+                value={formData.totalFarma}
+                onChange={(e) => setFormData({ ...formData, totalFarma: e.target.value as PlateFarmaType | '', totalFarmaOther: '' })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {Object.values(PlateFarmaType).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.totalFarma === PlateFarmaType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Total Farma <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.totalFarmaOther}
+                  onChange={(e) => setFormData({ ...formData, totalFarmaOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">
                 Plate By <span className="text-red-500">*</span>
               </label>
@@ -387,13 +537,34 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Plate Size</label>
-              <input
-                type="text"
+              <select
                 value={formData.plateSize}
-                onChange={(e) => setFormData({ ...formData, plateSize: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, plateSize: e.target.value as PlateSizeType | '', plateSizeOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">None</option>
+                {Object.values(PlateSizeType).map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {formData.plateSize === PlateSizeType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Plate Size <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.plateSizeOther}
+                  onChange={(e) => setFormData({ ...formData, plateSizeOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
@@ -425,6 +596,24 @@ export default function CreateJobPage() {
               >
                 <option value="">None</option>
                 {Object.values(LaminationType).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Normal</label>
+              <select
+                value={formData.normal}
+                onChange={(e) =>
+                  setFormData({ ...formData, normal: e.target.value as NormalType | '' })
+                }
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {Object.values(NormalType).map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>

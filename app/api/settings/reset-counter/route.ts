@@ -5,7 +5,7 @@ import { resetCounter, CounterName } from '@/lib/counterService';
 import { z } from 'zod';
 
 const resetCounterSchema = z.object({
-  counterType: z.enum(['quotation', 'job', 'estimate']),
+  counterType: z.enum(['quotation', 'job', 'estimate', 'challan']),
 });
 
 export async function POST(request: NextRequest) {
@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
         break;
       case 'estimate':
         counterName = CounterName.ESTIMATE;
+        break;
+      case 'challan':
+        counterName = CounterName.CHALLAN;
         break;
     }
 

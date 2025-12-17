@@ -9,6 +9,7 @@ const settingsSchema = z.object({
   quotationPrefix: z.string().min(1, 'Quotation prefix is required'),
   jobPrefix: z.string().min(1, 'Job prefix is required'),
   estimatePrefix: z.string().min(1, 'Estimate prefix is required'),
+  challanPrefix: z.string().min(1, 'Challan prefix is required'),
 });
 
 export async function GET(request: NextRequest) {
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
         quotationPrefix: 'Q',
         jobPrefix: 'J',
         estimatePrefix: 'E',
+        challanPrefix: 'C',
       });
     }
 

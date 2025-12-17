@@ -6,6 +6,11 @@ import {
   BindingType,
   StitchType,
   AdditionalService,
+  PlateFarmaType,
+  PlateSizeType,
+  NormalType,
+  PageColorType,
+  BookSizeType,
 } from '@/lib/types';
 import { baseSchemaFields, baseSchemaOptions } from '@/lib/baseSchema';
 
@@ -23,11 +28,21 @@ export interface IJob extends Document {
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
+  pageColor?: PageColorType;
+  pageColorOther?: string;
+  bookSize?: BookSizeType;
+  bookSizeOther?: string;
+  totalPlate?: PlateFarmaType;
+  totalPlateOther?: string;
+  totalFarma?: PlateFarmaType;
+  totalFarmaOther?: string;
   plateBy: PlateBy;
   plateFrom?: string;
-  plateSize?: string;
+  plateSize?: PlateSizeType;
+  plateSizeOther?: string;
   machineId: Types.ObjectId | string;
   laminationThermal?: LaminationType;
+  normal?: NormalType;
   folding: boolean;
   binding?: BindingType;
   stitch?: StitchType;
@@ -100,6 +115,22 @@ const JobSchema = new Schema<IJob>(
       type: Number,
       required: true,
     },
+    pageColor: {
+      type: String,
+      enum: Object.values(PageColorType),
+    },
+    pageColorOther: {
+      type: String,
+      trim: true,
+    },
+    bookSize: {
+      type: String,
+      enum: Object.values(BookSizeType),
+    },
+    bookSizeOther: {
+      type: String,
+      trim: true,
+    },
     plateBy: {
       type: String,
       enum: Object.values(PlateBy),
@@ -109,7 +140,28 @@ const JobSchema = new Schema<IJob>(
       type: String,
       trim: true,
     },
+    totalPlate: {
+      type: String,
+      enum: Object.values(PlateFarmaType),
+    },
+    totalPlateOther: {
+      type: String,
+      trim: true,
+    },
+    totalFarma: {
+      type: String,
+      enum: Object.values(PlateFarmaType),
+    },
+    totalFarmaOther: {
+      type: String,
+      trim: true,
+    },
     plateSize: {
+      type: String,
+      enum: Object.values(PlateSizeType),
+      trim: true,
+    },
+    plateSizeOther: {
       type: String,
       trim: true,
     },
@@ -121,6 +173,10 @@ const JobSchema = new Schema<IJob>(
     laminationThermal: {
       type: String,
       enum: Object.values(LaminationType),
+    },
+    normal: {
+      type: String,
+      enum: Object.values(NormalType),
     },
     folding: {
       type: Boolean,

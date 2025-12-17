@@ -12,6 +12,7 @@ interface Settings {
   quotationPrefix: string;
   jobPrefix: string;
   estimatePrefix: string;
+  challanPrefix: string;
 }
 
 export default function SettingsPage() {
@@ -24,6 +25,7 @@ export default function SettingsPage() {
     quotationPrefix: 'Q',
     jobPrefix: 'J',
     estimatePrefix: 'E',
+    challanPrefix: 'C',
   });
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleResetCounter = async (counterType: 'quotation' | 'job' | 'estimate') => {
+  const handleResetCounter = async (counterType: 'quotation' | 'job' | 'estimate' | 'challan') => {
     if (!confirm(`Are you sure you want to reset the ${counterType} counter? This will restart numbering from 001.`)) {
       return;
     }
@@ -150,7 +152,7 @@ export default function SettingsPage() {
                 Serial Number Prefixes
               </h2>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Quotation Prefix
@@ -204,6 +206,24 @@ export default function SettingsPage() {
                       Example: {settings.estimatePrefix}-001
                     </p>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Challan Prefix
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.challanPrefix}
+                      onChange={(e) =>
+                        setSettings({ ...settings, challanPrefix: e.target.value })
+                      }
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="e.g., C"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Example: {settings.challanPrefix}-001
+                    </p>
+                  </div>
                 </div>
 
                 <button
@@ -224,7 +244,7 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-600 mb-4">
                 Reset counters to restart numbering from 001. This action cannot be undone.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="border border-gray-300 rounded-lg p-4">
                   <h3 className="font-medium text-gray-900 mb-2">Quotation Counter</h3>
                   <p className="text-sm text-gray-600 mb-3">
@@ -261,6 +281,19 @@ export default function SettingsPage() {
                     className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
                   >
                     Reset Estimate
+                  </button>
+                </div>
+
+                <div className="border border-gray-300 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-900 mb-2">Challan Counter</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Restart challan numbering
+                  </p>
+                  <button
+                    onClick={() => handleResetCounter('challan')}
+                    className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                  >
+                    Reset Challan
                   </button>
                 </div>
               </div>
