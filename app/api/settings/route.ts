@@ -10,6 +10,19 @@ const settingsSchema = z.object({
   jobPrefix: z.string().min(1, 'Job prefix is required'),
   estimatePrefix: z.string().min(1, 'Estimate prefix is required'),
   challanPrefix: z.string().min(1, 'Challan prefix is required'),
+  companyName: z.string().optional(),
+  address: z.string().optional(),
+  email: z.string().email('Invalid email format').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  regdNo: z.string().optional(),
+  companyLogo: z.string().optional(),
+  companyLogoPublicId: z.string().optional(),
+  companyStamp: z.string().optional(),
+  companyStampPublicId: z.string().optional(),
+  letterhead: z.string().optional(),
+  letterheadPublicId: z.string().optional(),
+  esignature: z.string().optional(),
+  esignaturePublicId: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {

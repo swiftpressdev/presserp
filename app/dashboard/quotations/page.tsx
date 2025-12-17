@@ -28,15 +28,6 @@ export default function QuotationsPage() {
   const router = useRouter();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    partyName: '',
-    address: '',
-    phoneNumber: '',
-  });
-  const [editParticulars, setEditParticulars] = useState<Particular[]>([]);
-  const [editHasVAT, setEditHasVAT] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,76 +64,7 @@ export default function QuotationsPage() {
   };
 
   const handleEdit = (quotation: Quotation) => {
-    setEditingQuotation(quotation);
-    setEditFormData({
-      partyName: quotation.partyName,
-      address: quotation.address,
-      phoneNumber: quotation.phoneNumber,
-    });
-    // Convert particulars to match Particular interface
-    const convertedParticulars: Particular[] = quotation.particulars.map((p: any) => ({
-      sn: p.sn || 0,
-      particulars: p.particulars || '',
-      quantity: p.quantity || 0,
-      rate: p.rate || 0,
-      amount: p.amount || 0,
-    }));
-    setEditParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
-      { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
-    ]);
-    setEditHasVAT(quotation.hasVAT);
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingQuotation) return;
-
-    // Filter out empty rows
-    const validParticulars = editParticulars.filter(
-      (p) => p.particulars.trim() && p.quantity > 0 && p.rate > 0
-    );
-
-    if (validParticulars.length === 0) {
-      toast.error('Please add at least one particular with all fields filled');
-      return;
-    }
-
-    // Re-index the SN for valid particulars
-    const indexedParticulars = validParticulars.map((p, index) => ({
-      ...p,
-      sn: index + 1,
-      quantity: Number(p.quantity),
-      rate: Number(p.rate),
-      amount: Number(p.amount),
-    }));
-
-    try {
-      const response = await fetch(`/api/quotations/${editingQuotation._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...editFormData,
-          particulars: indexedParticulars,
-          hasVAT: editHasVAT,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update quotation');
-      }
-
-      toast.success('Quotation updated successfully');
-      setShowEditModal(false);
-      setEditingQuotation(null);
-      fetchQuotations();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update quotation');
-    }
+    router.push(`/dashboard/quotations/${quotation._id}`);
   };
 
   const handleDelete = async (quotationId: string, quotationSN: string) => {
@@ -235,12 +157,12 @@ export default function QuotationsPage() {
                       {quotation.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
-                      <button
-                        onClick={() => handleEdit(quotation)}
+                      <Link
+                        href={`/dashboard/quotations/${quotation._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleExportPDF(quotation)}
                         className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
@@ -258,80 +180,6 @@ export default function QuotationsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {showEditModal && editingQuotation && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-10 mx-auto p-5 border w-full max-w-5xl shadow-lg rounded-md bg-white mb-10">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Quotation</h3>
-                <form onSubmit={handleUpdate} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Party Name</label>
-                      <input
-                        type="text"
-                        value={editFormData.partyName}
-                        onChange={(e) => setEditFormData({ ...editFormData, partyName: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                      <input
-                        type="tel"
-                        value={editFormData.phoneNumber}
-                        onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Address</label>
-                      <input
-                        type="text"
-                        value={editFormData.address}
-                        onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-900 mb-4">Particulars</h4>
-                    <ParticularsTable
-                      particulars={editParticulars}
-                      onChange={setEditParticulars}
-                      hasVAT={editHasVAT}
-                      onVATChange={setEditHasVAT}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEditModal(false);
-                        setEditingQuotation(null);
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    >
-                      Update
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
           </div>
         )}
       </div>

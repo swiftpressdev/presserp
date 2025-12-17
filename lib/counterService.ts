@@ -50,11 +50,17 @@ export async function getNextSequenceNumber(
 
 export async function resetCounter(
   adminId: string,
-  counterName: CounterName
+  counterName: CounterName,
+  startingNumber: number = 0
 ): Promise<void> {
+  // Set sequenceValue to startingNumber - 1 because getNextSequenceNumber increments first
+  // So if startingNumber is 1, we set to 0, and next will be 1
+  // If startingNumber is 100, we set to 99, and next will be 100
+  const sequenceValue = Math.max(0, startingNumber - 1);
+  
   await Counter.findOneAndUpdate(
     { adminId, name: counterName },
-    { sequenceValue: 0 },
+    { sequenceValue },
     { upsert: true }
   );
 }

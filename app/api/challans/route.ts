@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       estimateReferenceNo: validatedData.estimateReferenceNo,
       particulars: validatedData.particulars,
       totalUnits,
-      createdBy: user.email || user._id.toString(),
+      createdBy: user.email || user.id,
     });
 
     return NextResponse.json(

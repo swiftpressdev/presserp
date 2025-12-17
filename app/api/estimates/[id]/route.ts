@@ -21,6 +21,40 @@ const updateEstimateSchema = z.object({
   hasVAT: z.boolean(),
 });
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const user = await requireAuth();
+    const adminId = getAdminId(user);
+    const { id } = await params;
+
+    const estimate = await Estimate.findOne({ _id: id, adminId })
+      .populate('clientId', 'clientName')
+      .populate('jobId', 'jobNo jobName totalBWPages totalColorPages totalPages paperSize');
+
+    if (!estimate) {
+      return NextResponse.json(
+        { error: 'Estimate not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ estimate }, { status: 200 });
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    console.error('Get estimate error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

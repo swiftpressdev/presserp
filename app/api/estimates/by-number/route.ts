@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import Estimate from '@/models/Estimate';
+import Estimate, { IParticular } from '@/models/Estimate';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert estimate particulars to challan particulars format (remove rate and amount)
-    const challanParticulars = estimate.particulars.map((p, index) => ({
+    const challanParticulars = estimate.particulars.map((p: IParticular, index: number) => ({
       sn: index + 1,
       particulars: p.particulars,
       quantity: p.quantity,

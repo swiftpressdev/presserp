@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 const resetCounterSchema = z.object({
   counterType: z.enum(['quotation', 'job', 'estimate', 'challan']),
+  startingNumber: z.number().int().min(0).max(999999).optional().default(0),
 });
 
 export async function POST(request: NextRequest) {
@@ -33,12 +34,17 @@ export async function POST(request: NextRequest) {
         break;
     }
 
-    await resetCounter(adminId, counterName);
+    await resetCounter(adminId, counterName, validatedData.startingNumber);
 
     const counterTypeCapitalized = validatedData.counterType.charAt(0).toUpperCase() + validatedData.counterType.slice(1);
+    const startingNumberFormatted = String(validatedData.startingNumber).padStart(3, '0');
+    
+    const message = validatedData.startingNumber === 0
+      ? `${counterTypeCapitalized} counter reset successfully`
+      : `${counterTypeCapitalized} counter reset to start from ${startingNumberFormatted}`;
 
     return NextResponse.json(
-      { message: `${counterTypeCapitalized} counter reset successfully` },
+      { message },
       { status: 200 }
     );
   } catch (error: any) {

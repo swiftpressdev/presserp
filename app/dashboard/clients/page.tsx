@@ -21,8 +21,6 @@ export default function ClientsPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -54,41 +52,7 @@ export default function ClientsPage() {
   };
 
   const handleEdit = (client: Client) => {
-    setEditingClient(client);
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingClient) return;
-
-    try {
-      const response = await fetch(`/api/clients/${editingClient._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientName: editingClient.clientName,
-          address: editingClient.address,
-          mobile: editingClient.mobile,
-          contactPerson: editingClient.contactPerson,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update client');
-      }
-
-      toast.success('Client updated successfully');
-      setShowEditModal(false);
-      setEditingClient(null);
-      fetchClients();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update client');
-    }
+    router.push(`/dashboard/clients/${client._id}`);
   };
 
   const handleDelete = async (clientId: string, clientName: string) => {
@@ -179,15 +143,15 @@ export default function ClientsPage() {
                       {client.contactPerson || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEdit(client)}
+                      <Link
+                        href={`/dashboard/clients/${client._id}`}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleDelete(client._id, client.clientName)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 ml-4"
                       >
                         Delete
                       </button>
@@ -196,72 +160,6 @@ export default function ClientsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {showEditModal && editingClient && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Client</h3>
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Client Name</label>
-                    <input
-                      type="text"
-                      value={editingClient.clientName}
-                      onChange={(e) => setEditingClient({ ...editingClient, clientName: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Mobile</label>
-                    <input
-                      type="text"
-                      value={editingClient.mobile}
-                      onChange={(e) => setEditingClient({ ...editingClient, mobile: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <input
-                      type="text"
-                      value={editingClient.address || ''}
-                      onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Contact Person</label>
-                    <input
-                      type="text"
-                      value={editingClient.contactPerson || ''}
-                      onChange={(e) => setEditingClient({ ...editingClient, contactPerson: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => { setShowEditModal(false); setEditingClient(null); }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    >
-                      Update
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
           </div>
         )}
       </div>

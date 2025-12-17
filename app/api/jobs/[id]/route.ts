@@ -52,6 +52,42 @@ const updateJobSchema = z.object({
   specialInstructions: z.string().optional(),
 });
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const user = await requireAuth();
+    const adminId = getAdminId(user);
+    const { id } = await params;
+
+    const job = await Job.findOne({ _id: id, adminId })
+      .populate('clientId', 'clientName')
+      .populate('paperId', 'paperName paperSize')
+      .populate('machineId', 'equipmentName')
+      .populate('relatedToJobId', 'jobNo jobName');
+
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ job }, { status: 200 });
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    console.error('Get job error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

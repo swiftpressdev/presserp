@@ -25,14 +25,6 @@ export default function ChallansPage() {
   const router = useRouter();
   const [challans, setChallans] = useState<Challan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingChallan, setEditingChallan] = useState<Challan | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    challanDate: '',
-    destination: '',
-    estimateReferenceNo: '',
-  });
-  const [editParticulars, setEditParticulars] = useState<ChallanParticular[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -64,60 +56,7 @@ export default function ChallansPage() {
   };
 
   const handleEdit = (challan: Challan) => {
-    setEditingChallan(challan);
-    setEditFormData({
-      challanDate: challan.challanDate,
-      destination: challan.destination,
-      estimateReferenceNo: challan.estimateReferenceNo,
-    });
-    setEditParticulars(challan.particulars);
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingChallan) return;
-
-    const validParticulars = editParticulars.filter(
-      (p) => p.particulars.trim() && p.quantity > 0
-    );
-
-    if (validParticulars.length === 0) {
-      toast.error('Please add at least one particular with all fields filled');
-      return;
-    }
-
-    const indexedParticulars = validParticulars.map((p, index) => ({
-      ...p,
-      sn: index + 1,
-      quantity: Number(p.quantity),
-    }));
-
-    try {
-      const response = await fetch(`/api/challans/${editingChallan._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...editFormData,
-          particulars: indexedParticulars,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update challan');
-      }
-
-      toast.success('Challan updated successfully');
-      setShowEditModal(false);
-      setEditingChallan(null);
-      fetchChallans();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update challan');
-    }
+    router.push(`/dashboard/challans/${challan._id}`);
   };
 
   const handleExportPDF = (challan: Challan) => {
@@ -226,12 +165,12 @@ export default function ChallansPage() {
                       {challan.totalUnits.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
-                      <button
-                        onClick={() => handleEdit(challan)}
+                      <Link
+                        href={`/dashboard/challans/${challan._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleExportPDF(challan)}
                         className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
@@ -249,80 +188,6 @@ export default function ChallansPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {showEditModal && editingChallan && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Edit Challan</h2>
-                <form onSubmit={handleUpdate}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Challan Date (BS)</label>
-                      <input
-                        type="text"
-                        required
-                        value={editFormData.challanDate}
-                        onChange={(e) => setEditFormData({ ...editFormData, challanDate: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        placeholder="YYYY-MM-DD"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Destination</label>
-                      <input
-                        type="text"
-                        required
-                        value={editFormData.destination}
-                        onChange={(e) => setEditFormData({ ...editFormData, destination: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Estimate Reference No</label>
-                      <input
-                        type="text"
-                        required
-                        value={editFormData.estimateReferenceNo}
-                        onChange={(e) => setEditFormData({ ...editFormData, estimateReferenceNo: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-900 mb-4">Particulars</h4>
-                    <ChallanParticularsTable
-                      particulars={editParticulars}
-                      onChange={setEditParticulars}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEditModal(false);
-                        setEditingChallan(null);
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    >
-                      Update
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
           </div>
         )}
       </div>

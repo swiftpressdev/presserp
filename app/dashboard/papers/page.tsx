@@ -22,8 +22,6 @@ export default function PapersPage() {
   const router = useRouter();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingPaper, setEditingPaper] = useState<Paper | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,42 +53,7 @@ export default function PapersPage() {
   };
 
   const handleEdit = (paper: Paper) => {
-    setEditingPaper(paper);
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPaper) return;
-
-    try {
-      const response = await fetch(`/api/papers/${editingPaper._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paperName: editingPaper.paperName,
-          paperType: editingPaper.paperType,
-          paperTypeOther: editingPaper.paperTypeOther,
-          paperSize: editingPaper.paperSize,
-          paperWeight: editingPaper.paperWeight,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update paper');
-      }
-
-      toast.success('Paper updated successfully');
-      setShowEditModal(false);
-      setEditingPaper(null);
-      fetchPapers();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update paper');
-    }
+    router.push(`/dashboard/papers/${paper._id}`);
   };
 
   const handleDelete = async (paperId: string, paperName: string) => {
@@ -183,15 +146,15 @@ export default function PapersPage() {
                       {paper.paperWeight}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEdit(paper)}
+                      <Link
+                        href={`/dashboard/papers/${paper._id}`}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleDelete(paper._id, paper.paperName)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 ml-4"
                       >
                         Delete
                       </button>
@@ -200,92 +163,6 @@ export default function PapersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {showEditModal && editingPaper && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Paper</h3>
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Paper Name</label>
-                    <input
-                      type="text"
-                      value={editingPaper.paperName}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, paperName: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Paper Type</label>
-                    <select
-                      value={editingPaper.paperType}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, paperType: e.target.value as PaperType })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      {Object.values(PaperType).map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {editingPaper.paperType === PaperType.OTHERS && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Specify Other Type</label>
-                      <input
-                        type="text"
-                        value={editingPaper.paperTypeOther || ''}
-                        onChange={(e) => setEditingPaper({ ...editingPaper, paperTypeOther: e.target.value })}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required={editingPaper.paperType === PaperType.OTHERS}
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Paper Size</label>
-                    <input
-                      type="text"
-                      value={editingPaper.paperSize}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, paperSize: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Paper Weight</label>
-                    <input
-                      type="text"
-                      value={editingPaper.paperWeight}
-                      onChange={(e) => setEditingPaper({ ...editingPaper, paperWeight: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      placeholder="e.g., 80gsm"
-                      required
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => { setShowEditModal(false); setEditingPaper(null); }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    >
-                      Update
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
           </div>
         )}
       </div>
