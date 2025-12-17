@@ -13,6 +13,38 @@ const updatePaperSchema = z.object({
   paperWeight: z.string().min(1, 'Paper weight is required'),
 });
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const user = await requireAuth();
+    const adminId = getAdminId(user);
+    const { id } = await params;
+
+    const paper = await Paper.findOne({ _id: id, adminId });
+
+    if (!paper) {
+      return NextResponse.json(
+        { error: 'Paper not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ paper }, { status: 200 });
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    console.error('Get paper error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

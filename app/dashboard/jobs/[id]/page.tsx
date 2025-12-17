@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { getCurrentBSDate } from '@/lib/dateUtils';
 import {
   JobType,
   PlateBy,
@@ -42,10 +41,13 @@ interface Job {
   jobName: string;
 }
 
-export default function CreateJobPage() {
+export default function EditJobPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const params = useParams();
+  const jobId = params.id as string;
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -54,8 +56,8 @@ export default function CreateJobPage() {
   const [formData, setFormData] = useState({
     jobName: '',
     clientId: '',
-    jobDate: getCurrentBSDate(),
-    deliveryDate: getCurrentBSDate(),
+    jobDate: '',
+    deliveryDate: '',
     jobTypes: [] as JobType[],
     quantity: 1,
     paperId: '',
@@ -93,10 +95,11 @@ export default function CreateJobPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (user && jobId) {
       fetchDropdownData();
+      fetchJob();
     }
-  }, [user]);
+  }, [user, jobId]);
 
   const fetchDropdownData = async () => {
     try {
@@ -120,6 +123,63 @@ export default function CreateJobPage() {
       setJobs(jobsData.jobs || []);
     } catch (error) {
       console.error('Failed to fetch dropdown data:', error);
+    }
+  };
+
+  const fetchJob = async () => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch job');
+      }
+
+      const job = data.job;
+      const clientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+      const paperId = typeof job.paperId === 'object' ? job.paperId._id.toString() : job.paperId.toString();
+      const machineId = typeof job.machineId === 'object' ? job.machineId._id.toString() : job.machineId.toString();
+      const relatedToJobId = job.relatedToJobId ? (typeof job.relatedToJobId === 'object' ? job.relatedToJobId._id.toString() : job.relatedToJobId.toString()) : '';
+
+      setFormData({
+        jobName: job.jobName || '',
+        clientId,
+        jobDate: job.jobDate || '',
+        deliveryDate: job.deliveryDate || '',
+        jobTypes: job.jobTypes || [],
+        quantity: job.quantity || 1,
+        paperId,
+        paperSize: job.paperSize || '',
+        totalBWPages: job.totalBWPages || 0,
+        totalColorPages: job.totalColorPages || 0,
+        pageColor: job.pageColor || '',
+        pageColorOther: job.pageColorOther || '',
+        bookSize: job.bookSize || '',
+        bookSizeOther: job.bookSizeOther || '',
+        totalPlate: job.totalPlate || '',
+        totalPlateOther: job.totalPlateOther || '',
+        totalFarma: job.totalFarma || '',
+        totalFarmaOther: job.totalFarmaOther || '',
+        plateBy: job.plateBy || PlateBy.COMPANY,
+        plateFrom: job.plateFrom || '',
+        plateSize: job.plateSize || '',
+        plateSizeOther: job.plateSizeOther || '',
+        machineId,
+        laminationThermal: job.laminationThermal || '',
+        normal: job.normal || '',
+        folding: job.folding || false,
+        binding: job.binding || '',
+        stitch: job.stitch || '',
+        additional: job.additional || [],
+        relatedToJobId,
+        remarks: job.remarks || '',
+        specialInstructions: job.specialInstructions || '',
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to fetch job');
+      router.push('/dashboard/jobs');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -154,7 +214,7 @@ export default function CreateJobPage() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
 
     try {
       const submitData = {
@@ -176,8 +236,8 @@ export default function CreateJobPage() {
         relatedToJobId: formData.relatedToJobId || undefined,
       };
 
-      const response = await fetch('/api/jobs', {
-        method: 'POST',
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -187,15 +247,15 @@ export default function CreateJobPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create job');
+        throw new Error(data.error || 'Failed to update job');
       }
 
-      toast.success('Job created successfully');
+      toast.success('Job updated successfully');
       router.push('/dashboard/jobs');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create job');
+      toast.error(error.message || 'Failed to update job');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -207,12 +267,22 @@ export default function CreateJobPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-lg">Loading job...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const totalPages = formData.totalBWPages + formData.totalColorPages;
 
   return (
     <DashboardLayout>
       <div className="max-w-5xl">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Create Job</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Edit Job</h1>
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -702,7 +772,7 @@ export default function CreateJobPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">None</option>
-                {jobs.map((job) => (
+                {jobs.filter(j => j._id !== jobId).map((job) => (
                   <option key={job._id} value={job._id}>
                     {job.jobNo} - {job.jobName}
                   </option>
@@ -738,10 +808,10 @@ export default function CreateJobPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={saving}
               className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Job'}
+              {saving ? 'Updating...' : 'Update Job'}
             </button>
             <button
               type="button"

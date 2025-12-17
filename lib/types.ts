@@ -59,3 +59,40 @@ export enum EquipmentStatus {
   OUT_OF_SERVICE = 'Out of Service',
   REPAIR = 'Repair',
 }
+
+export enum PlateFarmaType {
+  PAGE_32 = '32 Page',
+  PAGE_16 = '16 Page',
+  PAGE_8 = '8 Page',
+  PAGE_4 = '4 Page',
+  PAGE_2 = '2 Page',
+  OTHER = 'Other',
+}
+
+export enum PlateSizeType {
+  SIZE_615x740 = '615x740',
+  SIZE_550x650 = '550x650',
+  SIZE_530x650 = '530x650',
+  OTHER = 'Other',
+}
+
+export enum NormalType {
+  MATT = 'Matt',
+  GLOSS = 'Gloss',
+}
+
+export enum PageColorType {
+  SINGLE_COLOR = 'Single Color',
+  TWO_COLOR = '2 Color',
+  THREE_COLOR = '3 Color',
+  FOUR_COLOR = '4 Color',
+  OTHER = 'Other',
+}
+
+export enum BookSizeType {
+  SIZE_14x21 = '14x21',
+  SIZE_18x24 = '18x24',
+  SIZE_13x20 = '13x20',
+  A4 = 'A4',
+  OTHER = 'Other',
+}

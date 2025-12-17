@@ -6,48 +6,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { generateEstimatePDF } from '@/lib/pdfUtils';
+import { generateChallanPDF } from '@/lib/pdfUtils';
 import { formatBSDate } from '@/lib/dateUtils';
-import ParticularsTable, { Particular } from '@/components/ParticularsTable';
+import ChallanParticularsTable, { ChallanParticular } from '@/components/ChallanParticularsTable';
 
-interface Estimate {
+interface Challan {
   _id: string;
-  estimateNumber: string;
-  estimateDate: string;
-  clientId: string | { _id: string; clientName: string };
-  jobId: string | { _id: string; jobNo: string; jobName: string };
-  totalBWPages: number;
-  totalColorPages: number;
-  totalPages: number;
-  paperSize: string;
-  particulars: any[];
-  total: number;
-  hasVAT: boolean;
-  subtotal?: number;
-  vatAmount?: number;
-  grandTotal: number;
+  challanNumber: string;
+  challanDate: string;
+  destination: string;
+  estimateReferenceNo: string;
+  particulars: ChallanParticular[];
+  totalUnits: number;
 }
 
-interface Client {
-  _id: string;
-  clientName: string;
-}
-
-interface Job {
-  _id: string;
-  jobNo: string;
-  jobName: string;
-  clientId: string | { _id: string; clientName: string };
-  totalBWPages: number;
-  totalColorPages: number;
-  totalPages: number;
-  paperSize: string;
-}
-
-export default function EstimatesPage() {
+export default function ChallansPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [challans, setChallans] = useState<Challan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,74 +34,63 @@ export default function EstimatesPage() {
 
   useEffect(() => {
     if (user) {
-      fetchEstimates();
+      fetchChallans();
     }
   }, [user]);
 
-  const fetchEstimates = async () => {
+  const fetchChallans = async () => {
     try {
-      const response = await fetch('/api/estimates');
+      const response = await fetch('/api/challans');
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error);
       }
 
-      setEstimates(data.estimates);
+      setChallans(data.challans);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch estimates');
+      toast.error(error.message || 'Failed to fetch challans');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (estimate: Estimate) => {
-    router.push(`/dashboard/estimates/${estimate._id}`);
+  const handleEdit = (challan: Challan) => {
+    router.push(`/dashboard/challans/${challan._id}`);
   };
 
-  const handleExportPDF = (estimate: Estimate) => {
-    const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
-    const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
-    
-    generateEstimatePDF({
-      estimateNumber: estimate.estimateNumber,
-      estimateDate: formatBSDate(estimate.estimateDate),
-      clientName,
-      jobNumber,
-      totalBWPages: estimate.totalBWPages,
-      totalColorPages: estimate.totalColorPages,
-      totalPages: estimate.totalPages,
-      paperSize: estimate.paperSize,
-      particulars: estimate.particulars,
-      total: estimate.total,
-      hasVAT: estimate.hasVAT,
-      subtotal: estimate.subtotal,
-      vatAmount: estimate.vatAmount,
-      grandTotal: estimate.grandTotal,
+  const handleExportPDF = (challan: Challan) => {
+    generateChallanPDF({
+      challanNumber: challan.challanNumber,
+      challanDate: formatBSDate(challan.challanDate),
+      destination: challan.destination,
+      estimateReferenceNo: challan.estimateReferenceNo,
+      particulars: challan.particulars,
+      totalUnits: challan.totalUnits,
     });
     toast.success('PDF exported successfully');
   };
 
-  const handleDelete = async (estimateId: string, estimateNumber: string) => {
-    if (!confirm(`Are you sure you want to delete estimate "${estimateNumber}"?`)) {
+  const handleDelete = async (challanId: string, challanNumber: string) => {
+    if (!confirm(`Are you sure you want to delete challan "${challanNumber}"?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/estimates/${estimateId}`, {
+      const response = await fetch(`/api/challans/${challanId}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete estimate');
+        throw new Error(data.error || 'Failed to delete challan');
       }
 
-      toast.success('Estimate deleted successfully');
-      fetchEstimates();
+      toast.success('Challan deleted successfully');
+      fetchChallans();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete estimate');
+      toast.error(error.message || 'Failed to delete challan');
     }
   };
 
@@ -141,20 +106,20 @@ export default function EstimatesPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Estimates</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Challans</h1>
           <Link
-            href="/dashboard/estimates/create"
+            href="/dashboard/challans/create"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Create Estimate
+            Create Challan
           </Link>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading estimates...</div>
-        ) : estimates.length === 0 ? (
+          <div className="text-center py-12">Loading challans...</div>
+        ) : challans.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No estimates found. Create your first estimate.</p>
+            <p className="text-gray-500">No challans found. Create your first challan.</p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -162,22 +127,19 @@ export default function EstimatesPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estimate No
+                    SN
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client
+                    Destination
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Job No
+                    Estimate Reference
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Job Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Grand Total
+                    Total Units
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -185,41 +147,38 @@ export default function EstimatesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {estimates.map((estimate) => (
-                  <tr key={estimate._id} className="hover:bg-gray-50">
+                {challans.map((challan) => (
+                  <tr key={challan._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {estimate.estimateNumber}
+                      {challan.challanNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatBSDate(estimate.estimateDate)}
+                      {formatBSDate(challan.challanDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-'}
+                      {challan.destination}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-'}
+                      {challan.estimateReferenceNo}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobName : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {estimate.grandTotal.toFixed(2)}
+                      {challan.totalUnits.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
                       <Link
-                        href={`/dashboard/estimates/${estimate._id}`}
+                        href={`/dashboard/challans/${challan._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
                       >
                         Edit
                       </Link>
                       <button
-                        onClick={() => handleExportPDF(estimate)}
+                        onClick={() => handleExportPDF(challan)}
                         className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
                       >
-                        Export PDF
+                        PDF
                       </button>
                       <button
-                        onClick={() => handleDelete(estimate._id, estimate.estimateNumber)}
+                        onClick={() => handleDelete(challan._id, challan.challanNumber)}
                         className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
                       >
                         Delete
@@ -231,7 +190,6 @@ export default function EstimatesPage() {
             </table>
           </div>
         )}
-
       </div>
     </DashboardLayout>
   );

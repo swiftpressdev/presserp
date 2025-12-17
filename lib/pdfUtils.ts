@@ -144,11 +144,21 @@ interface JobData {
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
+  pageColor?: string;
+  pageColorOther?: string;
+  bookSize?: string;
+  bookSizeOther?: string;
+  totalPlate?: string;
+  totalPlateOther?: string;
+  totalFarma?: string;
+  totalFarmaOther?: string;
   plateBy: string;
   plateFrom?: string;
   plateSize?: string;
+  plateSizeOther?: string;
   machineName: string;
   laminationThermal?: string;
+  normal?: string;
   folding: boolean;
   binding?: string;
   stitch?: string;
@@ -187,6 +197,31 @@ export function generateJobPDF(data: JobData) {
   yPos += 7;
   doc.text(`Total Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`, 14, yPos);
   yPos += 7;
+  
+  if (data.pageColor) {
+    const pageColorValue = data.pageColor === 'Other' && data.pageColorOther ? data.pageColorOther : data.pageColor;
+    doc.text(`Page Color: ${pageColorValue}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (data.bookSize) {
+    const bookSizeValue = data.bookSize === 'Other' && data.bookSizeOther ? data.bookSizeOther : data.bookSize;
+    doc.text(`Book Size: ${bookSizeValue}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (data.totalPlate) {
+    const totalPlateValue = data.totalPlate === 'Other' && data.totalPlateOther ? data.totalPlateOther : data.totalPlate;
+    doc.text(`Total Plate: ${totalPlateValue}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (data.totalFarma) {
+    const totalFarmaValue = data.totalFarma === 'Other' && data.totalFarmaOther ? data.totalFarmaOther : data.totalFarma;
+    doc.text(`Total Farma: ${totalFarmaValue}`, 14, yPos);
+    yPos += 7;
+  }
+  
   doc.text(`Plate By: ${data.plateBy}`, 14, yPos);
   yPos += 7;
   
@@ -196,7 +231,8 @@ export function generateJobPDF(data: JobData) {
   }
   
   if (data.plateSize) {
-    doc.text(`Plate Size: ${data.plateSize}`, 14, yPos);
+    const plateSizeValue = data.plateSize === 'Other' && data.plateSizeOther ? data.plateSizeOther : data.plateSize;
+    doc.text(`Plate Size: ${plateSizeValue}`, 14, yPos);
     yPos += 7;
   }
   
@@ -205,6 +241,11 @@ export function generateJobPDF(data: JobData) {
   
   if (data.laminationThermal) {
     doc.text(`Lamination Thermal: ${data.laminationThermal}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (data.normal) {
+    doc.text(`Normal: ${data.normal}`, 14, yPos);
     yPos += 7;
   }
   
@@ -241,4 +282,64 @@ export function generateJobPDF(data: JobData) {
   }
 
   doc.save(`Job-${data.jobNo}.pdf`);
+}
+
+interface ChallanParticular {
+  sn: number;
+  particulars: string;
+  quantity: number;
+}
+
+interface ChallanData {
+  challanNumber: string;
+  challanDate: string;
+  destination: string;
+  estimateReferenceNo: string;
+  particulars: ChallanParticular[];
+  totalUnits: number;
+}
+
+export function generateChallanPDF(data: ChallanData) {
+  const doc = new jsPDF();
+
+  doc.setFontSize(20);
+  doc.text('CHALLAN', 105, 20, { align: 'center' });
+
+  let yPos = 35;
+  doc.setFontSize(10);
+
+  doc.text(`Challan No: ${data.challanNumber}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Date: ${data.challanDate}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Destination: ${data.destination}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Estimate Reference No: ${data.estimateReferenceNo}`, 14, yPos);
+  yPos += 10;
+
+  const tableData = data.particulars.map((p) => [
+    p.sn.toString(),
+    p.particulars,
+    p.quantity.toFixed(2),
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['SN', 'Particulars', 'Quantity']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [66, 139, 202] },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 40, halign: 'right' },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
+  doc.setFontSize(10);
+  doc.text(`Total Units: ${data.totalUnits.toFixed(2)}`, 14, finalY + 10);
+
+  doc.save(`Challan-${data.challanNumber}.pdf`);
 }

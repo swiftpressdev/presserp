@@ -20,6 +20,38 @@ const updateQuotationSchema = z.object({
   hasVAT: z.boolean(),
 });
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const user = await requireAuth();
+    const adminId = getAdminId(user);
+    const { id } = await params;
+
+    const quotation = await Quotation.findOne({ _id: id, adminId });
+
+    if (!quotation) {
+      return NextResponse.json(
+        { error: 'Quotation not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ quotation }, { status: 200 });
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    console.error('Get quotation error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

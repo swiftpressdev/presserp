@@ -20,6 +20,7 @@ const menuItems: MenuItem[] = [
   { name: 'Jobs Creator', path: '/dashboard/jobs' },
   { name: 'Equipment', path: '/dashboard/equipment' },
   { name: 'Estimates', path: '/dashboard/estimates' },
+  { name: 'Challan', path: '/dashboard/challans' },
   { name: 'Settings', path: '/dashboard/settings', adminOnly: true },
 ];
 

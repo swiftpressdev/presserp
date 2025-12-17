@@ -22,14 +22,6 @@ export default function EquipmentPage() {
   const router = useRouter();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    equipmentName: '',
-    size: '',
-    status: EquipmentStatus.OPERATIONAL,
-    lastMaintainedDate: '',
-  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,42 +53,7 @@ export default function EquipmentPage() {
   };
 
   const handleEdit = (item: Equipment) => {
-    setEditingEquipment(item);
-    setEditFormData({
-      equipmentName: item.equipmentName,
-      size: item.size,
-      status: item.status as EquipmentStatus,
-      lastMaintainedDate: item.lastMaintainedDate,
-    });
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingEquipment) return;
-
-    try {
-      const response = await fetch(`/api/equipment/${editingEquipment._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editFormData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update equipment');
-      }
-
-      toast.success('Equipment updated successfully');
-      setShowEditModal(false);
-      setEditingEquipment(null);
-      fetchEquipment();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update equipment');
-    }
+    router.push(`/dashboard/equipment/${item._id}`);
   };
 
   const handleDelete = async (equipmentId: string, equipmentName: string) => {
@@ -187,15 +144,15 @@ export default function EquipmentPage() {
                       {formatBSDate(item.lastMaintainedDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEdit(item)}
+                      <Link
+                        href={`/dashboard/equipment/${item._id}`}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleDelete(item._id, item.equipmentName)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 ml-4"
                       >
                         Delete
                       </button>
@@ -204,80 +161,6 @@ export default function EquipmentPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {showEditModal && editingEquipment && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Equipment</h3>
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Equipment Name</label>
-                    <input
-                      type="text"
-                      value={editFormData.equipmentName}
-                      onChange={(e) => setEditFormData({ ...editFormData, equipmentName: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Size</label>
-                    <input
-                      type="text"
-                      value={editFormData.size}
-                      onChange={(e) => setEditFormData({ ...editFormData, size: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <select
-                      value={editFormData.status}
-                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as EquipmentStatus })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      {Object.values(EquipmentStatus).map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Last Maintained Date (BS)</label>
-                    <input
-                      type="text"
-                      value={editFormData.lastMaintainedDate}
-                      onChange={(e) => setEditFormData({ ...editFormData, lastMaintainedDate: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                      placeholder="YYYY-MM-DD"
-                      required
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => { setShowEditModal(false); setEditingEquipment(null); }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    >
-                      Update
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
           </div>
         )}
       </div>
