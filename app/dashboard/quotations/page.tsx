@@ -24,6 +24,7 @@ interface Quotation {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
 }
 

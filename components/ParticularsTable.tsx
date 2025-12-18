@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ToWords } from 'to-words';
 
 export interface Particular {
   sn: number;
@@ -100,6 +101,30 @@ export default function ParticularsTable({
     vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
     grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
   }
+
+  // Calculate amount in words
+  const [amountInWords, setAmountInWords] = useState('');
+  
+  useEffect(() => {
+    if (grandTotal > 0) {
+      try {
+        const toWords = new ToWords({
+          localeCode: 'en-IN',
+          converterOptions: {
+            currency: true,
+            ignoreDecimal: false,
+            ignoreZeroCurrency: false,
+          },
+        });
+        setAmountInWords(toWords.convert(grandTotal));
+      } catch (error) {
+        console.error('Error converting amount to words:', error);
+        setAmountInWords('');
+      }
+    } else {
+      setAmountInWords('');
+    }
+  }, [grandTotal]);
 
   return (
     <div className="space-y-4">
@@ -301,6 +326,15 @@ export default function ParticularsTable({
           <span className="font-bold text-lg">Grand Total:</span>
           <span className="text-xl font-bold text-blue-600">{grandTotal.toFixed(2)}</span>
         </div>
+
+        {amountInWords && (
+          <div className="border-t pt-3">
+            <div className="flex flex-col">
+              <span className="font-medium text-sm text-gray-700 mb-1">Amount in Words:</span>
+              <span className="text-sm text-gray-900 italic">{amountInWords}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

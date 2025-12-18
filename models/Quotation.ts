@@ -24,6 +24,7 @@ export interface IQuotation extends Document {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
   createdBy: string;
   createdAt: Date;
@@ -113,6 +114,10 @@ const QuotationSchema = new Schema<IQuotation>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    amountInWords: {
+      type: String,
+      trim: true,
     },
     remarks: {
       type: String,

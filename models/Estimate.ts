@@ -28,6 +28,7 @@ export interface IEstimate extends Document {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
   createdBy: string;
   createdAt: Date;
@@ -133,6 +134,10 @@ const EstimateSchema = new Schema<IEstimate>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    amountInWords: {
+      type: String,
+      trim: true,
     },
     remarks: {
       type: String,

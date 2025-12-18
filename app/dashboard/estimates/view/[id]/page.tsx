@@ -28,6 +28,7 @@ interface Estimate {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
 }
 
@@ -274,6 +275,14 @@ export default function ViewEstimatePage() {
                     {estimate.grandTotal.toFixed(2)}
                   </span>
                 </div>
+                {estimate.amountInWords && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-700 mb-1">Amount in Words:</span>
+                      <span className="text-sm text-gray-900 italic">{estimate.amountInWords}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

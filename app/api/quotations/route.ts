@@ -4,6 +4,7 @@ import Quotation from '@/models/Quotation';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { getNextSequenceNumber, CounterName } from '@/lib/counterService';
 import { z } from 'zod';
+import { ToWords } from 'to-words';
 
 const particularSchema = z.object({
   sn: z.coerce.number(),
@@ -80,6 +81,17 @@ export async function POST(request: NextRequest) {
       grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
     }
 
+    // Convert grand total to words
+    const toWords = new ToWords({
+      localeCode: 'en-IN',
+      converterOptions: {
+        currency: true,
+        ignoreDecimal: false,
+        ignoreZeroCurrency: false,
+      },
+    });
+    const amountInWords = toWords.convert(grandTotal);
+
     const quotation = await Quotation.create({
       ...validatedData,
       quotationSN,
@@ -93,6 +105,7 @@ export async function POST(request: NextRequest) {
       vatType: validatedData.vatType,
       vatAmount: validatedData.vatType !== 'none' ? vatAmount : undefined,
       grandTotal,
+      amountInWords,
     });
 
     return NextResponse.json(

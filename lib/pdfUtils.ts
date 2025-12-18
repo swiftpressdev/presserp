@@ -89,6 +89,7 @@ interface QuotationData {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
 }
 
@@ -210,6 +211,18 @@ export async function generateQuotationPDF(data: QuotationData) {
   doc.setFont('helvetica', 'normal');
   currentY += 7;
 
+  // Add amount in words if present
+  if (data.amountInWords) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Amount in Words: ', 20, currentY);
+    doc.setFont('helvetica', 'normal');
+    const amountInWordsX = 20 + doc.getTextWidth('Amount in Words: ') + 2;
+    const amountInWordsLines = doc.splitTextToSize(data.amountInWords, 150);
+    doc.text(amountInWordsLines, amountInWordsX, currentY);
+    currentY += amountInWordsLines.length * 5;
+  }
+
   // Add remarks if present
   if (data.remarks && data.remarks.trim()) {
     currentY += 7;
@@ -248,6 +261,7 @@ interface EstimateData {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
 }
 
@@ -355,6 +369,18 @@ export async function generateEstimatePDF(data: EstimateData) {
   doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 20, currentY);
   doc.setFont('helvetica', 'normal');
   currentY += 7;
+
+  // Add amount in words if present
+  if (data.amountInWords) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Amount in Words: ', 20, currentY);
+    doc.setFont('helvetica', 'normal');
+    const amountInWordsX = 20 + doc.getTextWidth('Amount in Words: ') + 2;
+    const amountInWordsLines = doc.splitTextToSize(data.amountInWords, 150);
+    doc.text(amountInWordsLines, amountInWordsX, currentY);
+    currentY += amountInWordsLines.length * 5;
+  }
 
   // Add remarks if present
   if (data.remarks && data.remarks.trim()) {

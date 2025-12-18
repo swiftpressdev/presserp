@@ -4,6 +4,7 @@ import Estimate from '@/models/Estimate';
 import Job from '@/models/Job';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
+import { ToWords } from 'to-words';
 
 const particularSchema = z.object({
   sn: z.coerce.number(),
@@ -105,6 +106,17 @@ export async function PUT(
       grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
     }
 
+    // Convert grand total to words
+    const toWords = new ToWords({
+      localeCode: 'en-IN',
+      converterOptions: {
+        currency: true,
+        ignoreDecimal: false,
+        ignoreZeroCurrency: false,
+      },
+    });
+    const amountInWords = toWords.convert(grandTotal);
+
     const estimate = await Estimate.findOneAndUpdate(
       { _id: id, adminId },
       {
@@ -121,6 +133,7 @@ export async function PUT(
         vatType: validatedData.vatType,
         vatAmount: validatedData.vatType !== 'none' ? vatAmount : undefined,
         grandTotal,
+        amountInWords,
       },
       { new: true }
     ).populate('clientId', 'clientName')

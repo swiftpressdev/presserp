@@ -29,6 +29,7 @@ interface Estimate {
   vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
   remarks?: string;
 }
 
@@ -110,6 +111,7 @@ export default function EstimatesPage() {
         vatType: estimate.vatType,
         vatAmount: estimate.vatAmount,
         grandTotal: estimate.grandTotal,
+        amountInWords: estimate.amountInWords,
         remarks: estimate.remarks,
       });
       toast.success('PDF exported successfully');
