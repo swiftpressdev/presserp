@@ -272,6 +272,12 @@ export default function JobsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
                       <Link
+                        href={`/dashboard/jobs/view/${job._id}`}
+                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+                      >
+                        View
+                      </Link>
+                      <Link
                         href={`/dashboard/jobs/${job._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
                       >

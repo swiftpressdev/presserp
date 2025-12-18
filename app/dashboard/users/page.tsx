@@ -152,10 +152,16 @@ export default function UsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <Link
+                        href={`/dashboard/users/view/${user._id}`}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        View
+                      </Link>
                       <button
                         onClick={() => handleDelete(user._id, user.name)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 ml-4"
                       >
                         Delete
                       </button>
