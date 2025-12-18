@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/auth/session', {
         credentials: 'include',
+        cache: 'no-store', // Prevent caching
       });
       
       // Session endpoint now always returns 200, so check the authenticated flag
@@ -39,8 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         return data.user;
       } else {
-        // Token expired or invalid - clear user
-        setUser(null);
+        // Only clear user if we had a user before - this prevents clearing on initial load
+        // Token expired or invalid - clear user only if we were previously authenticated
+        if (user) {
+          console.log('Session expired or invalid, clearing user state');
+          setUser(null);
+        }
         return null;
       }
     } catch (error) {
@@ -60,12 +65,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initSession();
   }, []);
 
-  // Set up periodic session check separately to avoid dependency issues
+  // Set up periodic session check - but only refresh user state, don't clear on failure
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(async () => {
-      await checkSession();
+      try {
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        
+        const data = await response.json();
+        
+        // Only update if authenticated - don't clear on failure to avoid false logouts
+        if (data.authenticated) {
+          setUser(data.user);
+        }
+        // If not authenticated, keep current user state - token might be temporarily unavailable
+        // The user will be logged out naturally when they try to access a protected route
+      } catch (error) {
+        // Ignore network errors - keep current user state
+        console.error('Periodic session check failed:', error);
+      }
     }, 5 * 60 * 1000); // Check every 5 minutes
 
     return () => clearInterval(interval);

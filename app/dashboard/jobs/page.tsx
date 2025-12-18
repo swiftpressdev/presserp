@@ -53,7 +53,9 @@ interface Job {
   normal?: string;
   folding: boolean;
   binding?: string;
+  bindingOther?: string;
   stitch?: string;
+  stitchOther?: string;
   additional?: string[];
   relatedToJobId?: string | { _id: string; jobNo: string };
   remarks?: string;
@@ -146,9 +148,7 @@ export default function JobsPage() {
         bookSize: job.bookSize,
         bookSizeOther: job.bookSizeOther,
         totalPlate: job.totalPlate,
-        totalPlateOther: job.totalPlateOther,
         totalFarma: job.totalFarma,
-        totalFarmaOther: job.totalFarmaOther,
         plateBy: job.plateBy,
         plateFrom: job.plateFrom,
         plateSize: job.plateSize,
@@ -158,7 +158,9 @@ export default function JobsPage() {
         normal: job.normal,
         folding: job.folding,
         binding: job.binding,
+        bindingOther: job.bindingOther,
         stitch: job.stitch,
+        stitchOther: job.stitchOther,
         additional: job.additional,
         relatedToJobNo,
         remarks: job.remarks,

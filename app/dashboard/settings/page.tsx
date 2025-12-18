@@ -1003,7 +1003,7 @@ export default function SettingsPage() {
                         type="number"
                         min="0"
                         max="999999"
-                        value={startingNumber}
+                        value={startingNumber === '' || startingNumber === '0' ? '' : startingNumber}
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value === '' || (!isNaN(Number(value)) && Number(value) >= 0)) {

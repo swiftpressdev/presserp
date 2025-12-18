@@ -30,9 +30,7 @@ interface Job {
   bookSize?: string;
   bookSizeOther?: string;
   totalPlate?: string;
-  totalPlateOther?: string;
   totalFarma?: string;
-  totalFarmaOther?: string;
   plateBy: string;
   plateFrom?: string;
   plateSize?: string;
@@ -41,7 +39,9 @@ interface Job {
   normal?: string;
   folding: boolean;
   binding?: string;
+  bindingOther?: string;
   stitch?: string;
+  stitchOther?: string;
   additional?: string[];
   remarks?: string;
   specialInstructions?: string;
@@ -241,7 +241,7 @@ export default function ViewJobPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Total Plate</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {job.totalPlate === 'Other' && job.totalPlateOther ? job.totalPlateOther : job.totalPlate}
+                  {job.totalPlate}
                 </div>
               </div>
             )}
@@ -250,7 +250,7 @@ export default function ViewJobPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Total Farma</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {job.totalFarma === 'Other' && job.totalFarmaOther ? job.totalFarmaOther : job.totalFarma}
+                  {job.totalFarma}
                 </div>
               </div>
             )}
@@ -316,7 +316,7 @@ export default function ViewJobPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Binding</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {job.binding}
+                  {job.binding === 'Other' && job.bindingOther ? job.bindingOther : job.binding}
                 </div>
               </div>
             )}
@@ -325,7 +325,7 @@ export default function ViewJobPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Stitch</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {job.stitch}
+                  {job.stitch === 'Other' && job.stitchOther ? job.stitchOther : job.stitch}
                 </div>
               </div>
             )}

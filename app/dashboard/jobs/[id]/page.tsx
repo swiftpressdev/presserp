@@ -33,6 +33,7 @@ interface Paper {
 interface Equipment {
   _id: string;
   equipmentName: string;
+  status: string;
 }
 
 interface Job {
@@ -68,10 +69,8 @@ export default function EditJobPage() {
     pageColorOther: '',
     bookSize: '' as BookSizeType | '',
     bookSizeOther: '',
-    totalPlate: '' as PlateFarmaType | '',
-    totalPlateOther: '',
-    totalFarma: '' as PlateFarmaType | '',
-    totalFarmaOther: '',
+    totalPlate: '',
+    totalFarma: '',
     plateBy: PlateBy.COMPANY,
     plateFrom: '',
     plateSize: '' as PlateSizeType | '',
@@ -81,7 +80,9 @@ export default function EditJobPage() {
     normal: '' as NormalType | '',
     folding: false,
     binding: '' as BindingType | '',
+    bindingOther: '',
     stitch: '' as StitchType | '',
+    stitchOther: '',
     additional: [] as AdditionalService[],
     relatedToJobId: '',
     remarks: '',
@@ -157,9 +158,7 @@ export default function EditJobPage() {
         bookSize: job.bookSize || '',
         bookSizeOther: job.bookSizeOther || '',
         totalPlate: job.totalPlate || '',
-        totalPlateOther: job.totalPlateOther || '',
         totalFarma: job.totalFarma || '',
-        totalFarmaOther: job.totalFarmaOther || '',
         plateBy: job.plateBy || PlateBy.COMPANY,
         plateFrom: job.plateFrom || '',
         plateSize: job.plateSize || '',
@@ -169,7 +168,9 @@ export default function EditJobPage() {
         normal: job.normal || '',
         folding: job.folding || false,
         binding: job.binding || '',
+        bindingOther: job.bindingOther || '',
         stitch: job.stitch || '',
+        stitchOther: job.stitchOther || '',
         additional: job.additional || [],
         relatedToJobId,
         remarks: job.remarks || '',
@@ -224,15 +225,15 @@ export default function EditJobPage() {
         bookSize: formData.bookSize || undefined,
         bookSizeOther: formData.bookSize === BookSizeType.OTHER ? formData.bookSizeOther : undefined,
         totalPlate: formData.totalPlate || undefined,
-        totalPlateOther: formData.totalPlate === PlateFarmaType.OTHER ? formData.totalPlateOther : undefined,
         totalFarma: formData.totalFarma || undefined,
-        totalFarmaOther: formData.totalFarma === PlateFarmaType.OTHER ? formData.totalFarmaOther : undefined,
         plateSize: formData.plateSize || undefined,
         plateSizeOther: formData.plateSize === PlateSizeType.OTHER ? formData.plateSizeOther : undefined,
         laminationThermal: formData.laminationThermal || undefined,
         normal: formData.normal || undefined,
         binding: formData.binding || undefined,
+        bindingOther: formData.binding === BindingType.OTHER ? formData.bindingOther : undefined,
         stitch: formData.stitch || undefined,
+        stitchOther: formData.stitch === StitchType.OTHER ? formData.stitchOther : undefined,
         relatedToJobId: formData.relatedToJobId || undefined,
       };
 
@@ -373,8 +374,11 @@ export default function EditJobPage() {
                 type="number"
                 required
                 min="1"
-                value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
+                value={formData.quantity === 0 ? '' : formData.quantity}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                  setFormData({ ...formData, quantity: value });
+                }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -419,10 +423,11 @@ export default function EditJobPage() {
                 type="number"
                 required
                 min="0"
-                value={formData.totalBWPages}
-                onChange={(e) =>
-                  setFormData({ ...formData, totalBWPages: parseInt(e.target.value) })
-                }
+                value={formData.totalBWPages === 0 ? '' : formData.totalBWPages}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                  setFormData({ ...formData, totalBWPages: value });
+                }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -435,10 +440,11 @@ export default function EditJobPage() {
                 type="number"
                 required
                 min="0"
-                value={formData.totalColorPages}
-                onChange={(e) =>
-                  setFormData({ ...formData, totalColorPages: parseInt(e.target.value) })
-                }
+                value={formData.totalColorPages === 0 ? '' : formData.totalColorPages}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                  setFormData({ ...formData, totalColorPages: value });
+                }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -517,65 +523,25 @@ export default function EditJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Total Plate</label>
-              <select
+              <input
+                type="text"
                 value={formData.totalPlate}
-                onChange={(e) => setFormData({ ...formData, totalPlate: e.target.value as PlateFarmaType | '', totalPlateOther: '' })}
+                onChange={(e) => setFormData({ ...formData, totalPlate: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">None</option>
-                {Object.values(PlateFarmaType).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter total plate"
+              />
             </div>
-
-            {formData.totalPlate === PlateFarmaType.OTHER && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Specify Total Plate <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.totalPlateOther}
-                  onChange={(e) => setFormData({ ...formData, totalPlateOther: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Total Farma</label>
-              <select
+              <input
+                type="text"
                 value={formData.totalFarma}
-                onChange={(e) => setFormData({ ...formData, totalFarma: e.target.value as PlateFarmaType | '', totalFarmaOther: '' })}
+                onChange={(e) => setFormData({ ...formData, totalFarma: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">None</option>
-                {Object.values(PlateFarmaType).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter total farma"
+              />
             </div>
-
-            {formData.totalFarma === PlateFarmaType.OTHER && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Specify Total Farma <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.totalFarmaOther}
-                  onChange={(e) => setFormData({ ...formData, totalFarmaOther: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
@@ -647,7 +613,7 @@ export default function EditJobPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Select Machine</option>
-                {equipment.map((eq) => (
+                {equipment.filter((eq) => eq.status === 'Operational').map((eq) => (
                   <option key={eq._id} value={eq._id}>
                     {eq.equipmentName}
                   </option>
@@ -719,7 +685,7 @@ export default function EditJobPage() {
               <label className="block text-sm font-medium text-gray-700">Binding</label>
               <select
                 value={formData.binding}
-                onChange={(e) => setFormData({ ...formData, binding: e.target.value as BindingType | '' })}
+                onChange={(e) => setFormData({ ...formData, binding: e.target.value as BindingType | '', bindingOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">None</option>
@@ -731,11 +697,27 @@ export default function EditJobPage() {
               </select>
             </div>
 
+            {formData.binding === BindingType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Binding <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.bindingOther}
+                  onChange={(e) => setFormData({ ...formData, bindingOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter binding type"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Stitch</label>
               <select
                 value={formData.stitch}
-                onChange={(e) => setFormData({ ...formData, stitch: e.target.value as StitchType | '' })}
+                onChange={(e) => setFormData({ ...formData, stitch: e.target.value as StitchType | '', stitchOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">None</option>
@@ -746,6 +728,22 @@ export default function EditJobPage() {
                 ))}
               </select>
             </div>
+
+            {formData.stitch === StitchType.OTHER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Specify Stitch <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.stitchOther}
+                  onChange={(e) => setFormData({ ...formData, stitchOther: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter stitch type"
+                />
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Additional Services</label>

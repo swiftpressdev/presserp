@@ -420,9 +420,7 @@ interface JobData {
   bookSize?: string;
   bookSizeOther?: string;
   totalPlate?: string;
-  totalPlateOther?: string;
   totalFarma?: string;
-  totalFarmaOther?: string;
   plateBy: string;
   plateFrom?: string;
   plateSize?: string;
@@ -432,7 +430,9 @@ interface JobData {
   normal?: string;
   folding: boolean;
   binding?: string;
+  bindingOther?: string;
   stitch?: string;
+  stitchOther?: string;
   additional?: string[];
   relatedToJobNo?: string;
   remarks?: string;
@@ -491,14 +491,12 @@ export async function generateJobPDF(data: JobData) {
   }
   
   if (data.totalPlate) {
-    const totalPlateValue = data.totalPlate === 'Other' && data.totalPlateOther ? data.totalPlateOther : data.totalPlate;
-    doc.text(`Total Plate: ${totalPlateValue}`, 20, yPos);
+    doc.text(`Total Plate: ${data.totalPlate}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.totalFarma) {
-    const totalFarmaValue = data.totalFarma === 'Other' && data.totalFarmaOther ? data.totalFarmaOther : data.totalFarma;
-    doc.text(`Total Farma: ${totalFarmaValue}`, 20, yPos);
+    doc.text(`Total Farma: ${data.totalFarma}`, 20, yPos);
     yPos += 7;
   }
   
@@ -533,12 +531,14 @@ export async function generateJobPDF(data: JobData) {
   yPos += 7;
   
   if (data.binding) {
-    doc.text(`Binding: ${data.binding}`, 20, yPos);
+    const bindingValue = data.binding === 'Other' && data.bindingOther ? data.bindingOther : data.binding;
+    doc.text(`Binding: ${bindingValue}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.stitch) {
-    doc.text(`Stitch: ${data.stitch}`, 20, yPos);
+    const stitchValue = data.stitch === 'Other' && data.stitchOther ? data.stitchOther : data.stitch;
+    doc.text(`Stitch: ${stitchValue}`, 20, yPos);
     yPos += 7;
   }
   
