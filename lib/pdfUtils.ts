@@ -77,8 +77,11 @@ interface QuotationData {
   phoneNumber: string;
   particulars: Particular[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }
@@ -120,20 +123,30 @@ export async function generateQuotationPDF(data: QuotationData) {
     headStyles: { fillColor: [66, 139, 202] },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
 
-  doc.text(`Total: ${data.total.toFixed(2)}`, 14, finalY);
+  doc.text(`Total: ${data.total.toFixed(2)}`, 14, currentY);
+  currentY += 7;
 
-  if (data.hasVAT) {
-    doc.text(`Subtotal: ${data.subtotal?.toFixed(2)}`, 14, finalY + 7);
-    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, finalY + 14);
-    doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 21);
-  } else {
-    doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 7);
+  // Show discount if applied
+  if (data.hasDiscount && data.discountPercentage && data.discountPercentage > 0) {
+    doc.text(`Discount (${data.discountPercentage}%): -${data.discountAmount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
+    doc.text(`Price After Discount: ${data.priceAfterDiscount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
   }
 
+  // Show VAT if applied
+  if (data.hasVAT) {
+    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
+  }
+
+  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, currentY);
+  currentY += 7;
+
   // Add company assets (logo, stamp, signature)
-  await addCompanyAssets(doc, assets, finalY + (data.hasVAT ? 21 : 7));
+  await addCompanyAssets(doc, assets, currentY);
 
   doc.save(`Quotation-${data.quotationSN}.pdf`);
 }
@@ -149,8 +162,11 @@ interface EstimateData {
   paperSize: string;
   particulars: Particular[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }
@@ -198,20 +214,30 @@ export async function generateEstimatePDF(data: EstimateData) {
     headStyles: { fillColor: [66, 139, 202] },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
 
-  doc.text(`Total: ${data.total.toFixed(2)}`, 14, finalY);
+  doc.text(`Total: ${data.total.toFixed(2)}`, 14, currentY);
+  currentY += 7;
 
-  if (data.hasVAT) {
-    doc.text(`Subtotal: ${data.subtotal?.toFixed(2)}`, 14, finalY + 7);
-    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, finalY + 14);
-    doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 21);
-  } else {
-    doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 7);
+  // Show discount if applied
+  if (data.hasDiscount && data.discountPercentage && data.discountPercentage > 0) {
+    doc.text(`Discount (${data.discountPercentage}%): -${data.discountAmount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
+    doc.text(`Price After Discount: ${data.priceAfterDiscount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
   }
 
+  // Show VAT if applied
+  if (data.hasVAT) {
+    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, currentY);
+    currentY += 7;
+  }
+
+  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, currentY);
+  currentY += 7;
+
   // Add company assets (logo, stamp, signature)
-  await addCompanyAssets(doc, assets, finalY + (data.hasVAT ? 21 : 7));
+  await addCompanyAssets(doc, assets, currentY);
 
   doc.save(`Estimate-${data.estimateNumber}.pdf`);
 }

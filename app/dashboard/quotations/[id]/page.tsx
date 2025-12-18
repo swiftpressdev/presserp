@@ -23,6 +23,8 @@ export default function EditQuotationPage() {
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
   const [hasVAT, setHasVAT] = useState(false);
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -63,6 +65,8 @@ export default function EditQuotationPage() {
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
       ]);
       setHasVAT(data.quotation.hasVAT || false);
+      setHasDiscount(data.quotation.hasDiscount || false);
+      setDiscountPercentage(data.quotation.discountPercentage || 0);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch quotation');
       router.push('/dashboard/quotations');
@@ -193,6 +197,10 @@ export default function EditQuotationPage() {
               onChange={setParticulars}
               hasVAT={hasVAT}
               onVATChange={setHasVAT}
+              hasDiscount={hasDiscount}
+              onDiscountChange={setHasDiscount}
+              discountPercentage={discountPercentage}
+              onDiscountPercentageChange={setDiscountPercentage}
             />
           </div>
 

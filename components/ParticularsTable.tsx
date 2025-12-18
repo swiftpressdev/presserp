@@ -15,6 +15,10 @@ interface ParticularsTableProps {
   onChange: (particulars: Particular[]) => void;
   hasVAT: boolean;
   onVATChange: (hasVAT: boolean) => void;
+  hasDiscount?: boolean;
+  onDiscountChange?: (hasDiscount: boolean) => void;
+  discountPercentage?: number;
+  onDiscountPercentageChange?: (percentage: number) => void;
 }
 
 export default function ParticularsTable({
@@ -22,6 +26,10 @@ export default function ParticularsTable({
   onChange,
   hasVAT,
   onVATChange,
+  hasDiscount = false,
+  onDiscountChange,
+  discountPercentage = 0,
+  onDiscountPercentageChange,
 }: ParticularsTableProps) {
   const addRow = () => {
     const newParticular: Particular = {
@@ -60,14 +68,22 @@ export default function ParticularsTable({
 
   const total = particulars.reduce((sum, item) => sum + item.amount, 0);
   
-  let subtotal = 0;
+  // Step 1: Calculate discount (if enabled)
+  let discountAmount = 0;
+  let priceAfterDiscount = total;
+  
+  if (hasDiscount && discountPercentage > 0) {
+    discountAmount = Number(((total * discountPercentage) / 100).toFixed(2));
+    priceAfterDiscount = Number((total - discountAmount).toFixed(2));
+  }
+  
+  // Step 2: Calculate VAT on the discounted price (if enabled)
   let vatAmount = 0;
-  let grandTotal = total;
-
+  let grandTotal = priceAfterDiscount;
+  
   if (hasVAT) {
-    subtotal = Number((total / 1.13).toFixed(2));
-    vatAmount = Number((subtotal * 0.13).toFixed(2));
-    grandTotal = Number((subtotal + vatAmount).toFixed(2));
+    vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+    grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
   }
 
   return (
@@ -151,7 +167,69 @@ export default function ParticularsTable({
           <span className="text-lg font-semibold">{total.toFixed(2)}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Discount Section */}
+        {onDiscountChange && onDiscountPercentageChange && (
+          <>
+            <div className="flex items-center gap-4 border-t pt-3">
+              <label className="font-medium">Apply Discount:</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="discount"
+                    checked={hasDiscount}
+                    onChange={() => onDiscountChange(true)}
+                  />
+                  <span>Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="discount"
+                    checked={!hasDiscount}
+                    onChange={() => onDiscountChange(false)}
+                  />
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
+
+            {hasDiscount && (
+              <div className="flex items-center gap-4">
+                <label className="font-medium">Discount %:</label>
+                <input
+                  type="number"
+                  value={discountPercentage === 0 ? '' : discountPercentage}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value);
+                    onDiscountPercentageChange(Math.max(0, Math.min(100, value)));
+                  }}
+                  className="w-24 px-3 py-1 border border-gray-300 rounded-md"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0"
+                />
+              </div>
+            )}
+
+            {hasDiscount && discountPercentage > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Discount ({discountPercentage}%):</span>
+                  <span className="text-red-600">-{discountAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Price After Discount:</span>
+                  <span>{priceAfterDiscount.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* VAT Section */}
+        <div className="flex items-center gap-4 border-t pt-3">
           <label className="font-medium">VAT (13%):</label>
           <div className="flex gap-4">
             <label className="flex items-center gap-2">
@@ -176,16 +254,10 @@ export default function ParticularsTable({
         </div>
 
         {hasVAT && (
-          <>
-            <div className="flex items-center justify-between border-t pt-3">
-              <span className="font-medium">Subtotal:</span>
-              <span>{subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium">VAT (13%):</span>
-              <span>{vatAmount.toFixed(2)}</span>
-            </div>
-          </>
+          <div className="flex items-center justify-between">
+            <span className="font-medium">VAT (13%):</span>
+            <span>{vatAmount.toFixed(2)}</span>
+          </div>
         )}
 
         <div className="flex items-center justify-between border-t pt-3">

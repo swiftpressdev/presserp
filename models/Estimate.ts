@@ -21,8 +21,11 @@ export interface IEstimate extends Document {
   paperSize: string;
   particulars: IParticular[];
   total: number;
+  hasDiscount: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
   createdBy: string;
@@ -105,12 +108,22 @@ const EstimateSchema = new Schema<IEstimate>(
       type: Number,
       required: true,
     },
-    hasVAT: {
+    hasDiscount: {
       type: Boolean,
       default: false,
     },
-    subtotal: {
+    discountPercentage: {
       type: Number,
+    },
+    discountAmount: {
+      type: Number,
+    },
+    priceAfterDiscount: {
+      type: Number,
+    },
+    hasVAT: {
+      type: Boolean,
+      default: false,
     },
     vatAmount: {
       type: Number,

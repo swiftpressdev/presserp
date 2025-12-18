@@ -51,6 +51,8 @@ export default function EditEstimatePage() {
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
   const [hasVAT, setHasVAT] = useState(false);
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -163,6 +165,8 @@ export default function EditEstimatePage() {
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
       ]);
       setHasVAT(estimate.hasVAT || false);
+      setHasDiscount(estimate.hasDiscount || false);
+      setDiscountPercentage(estimate.discountPercentage || 0);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch estimate');
       router.push('/dashboard/estimates');
@@ -230,6 +234,8 @@ export default function EditEstimatePage() {
           ...formData,
           particulars: indexedParticulars,
           hasVAT,
+          hasDiscount,
+          discountPercentage: hasDiscount ? discountPercentage : 0,
         }),
       });
 
@@ -384,6 +390,10 @@ export default function EditEstimatePage() {
               onChange={setParticulars}
               hasVAT={hasVAT}
               onVATChange={setHasVAT}
+              hasDiscount={hasDiscount}
+              onDiscountChange={setHasDiscount}
+              discountPercentage={discountPercentage}
+              onDiscountPercentageChange={setDiscountPercentage}
             />
           </div>
 

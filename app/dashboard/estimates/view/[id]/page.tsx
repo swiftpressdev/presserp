@@ -21,8 +21,11 @@ interface Estimate {
   paperSize: string;
   particulars: Particular[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }
@@ -236,21 +239,31 @@ export default function ViewEstimatePage() {
                   <span className="text-sm font-medium text-gray-700">Total:</span>
                   <span className="text-sm text-gray-900">{estimate.total.toFixed(2)}</span>
                 </div>
-                {estimate.hasVAT && (
+                {estimate.hasDiscount && estimate.discountPercentage && estimate.discountPercentage > 0 && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-                      <span className="text-sm text-gray-900">
-                        {estimate.subtotal?.toFixed(2) || '0.00'}
+                      <span className="text-sm font-medium text-gray-700">
+                        Discount ({estimate.discountPercentage}%):
+                      </span>
+                      <span className="text-sm text-red-600">
+                        -{estimate.discountAmount?.toFixed(2) || '0.00'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                      <span className="text-sm font-medium text-gray-700">Price After Discount:</span>
                       <span className="text-sm text-gray-900">
-                        {estimate.vatAmount?.toFixed(2) || '0.00'}
+                        {estimate.priceAfterDiscount?.toFixed(2) || '0.00'}
                       </span>
                     </div>
                   </>
+                )}
+                {estimate.hasVAT && (
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                    <span className="text-sm text-gray-900">
+                      {estimate.vatAmount?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
                 )}
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-sm font-bold text-gray-900">Grand Total:</span>

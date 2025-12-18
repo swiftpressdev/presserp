@@ -17,6 +17,8 @@ const updateQuotationSchema = z.object({
   address: z.string().min(1, 'Address is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
   particulars: z.array(particularSchema).min(1, 'At least one particular is required'),
+  hasDiscount: z.boolean().optional(),
+  discountPercentage: z.coerce.number().min(0).max(100).optional(),
   hasVAT: z.boolean(),
 });
 
@@ -68,14 +70,22 @@ export async function PUT(
     // Calculate totals
     const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
 
-    let subtotal = 0;
+    // Step 1: Calculate discount (if enabled)
+    let discountAmount = 0;
+    let priceAfterDiscount = total;
+    
+    if (validatedData.hasDiscount && validatedData.discountPercentage && validatedData.discountPercentage > 0) {
+      discountAmount = Number(((total * validatedData.discountPercentage) / 100).toFixed(2));
+      priceAfterDiscount = Number((total - discountAmount).toFixed(2));
+    }
+    
+    // Step 2: Calculate VAT on the discounted price (if enabled)
     let vatAmount = 0;
-    let grandTotal = total;
-
+    let grandTotal = priceAfterDiscount;
+    
     if (validatedData.hasVAT) {
-      subtotal = Number((total / 1.13).toFixed(2));
-      vatAmount = Number((subtotal * 0.13).toFixed(2));
-      grandTotal = Number((subtotal + vatAmount).toFixed(2));
+      vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+      grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
     }
 
     const quotation = await Quotation.findOneAndUpdate(
@@ -83,7 +93,10 @@ export async function PUT(
       {
         ...validatedData,
         total,
-        subtotal: validatedData.hasVAT ? subtotal : undefined,
+        hasDiscount: validatedData.hasDiscount || false,
+        discountPercentage: validatedData.hasDiscount ? validatedData.discountPercentage : undefined,
+        discountAmount: validatedData.hasDiscount && discountAmount > 0 ? discountAmount : undefined,
+        priceAfterDiscount: validatedData.hasDiscount && discountAmount > 0 ? priceAfterDiscount : undefined,
         vatAmount: validatedData.hasVAT ? vatAmount : undefined,
         grandTotal,
       },

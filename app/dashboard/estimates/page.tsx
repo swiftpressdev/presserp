@@ -22,8 +22,11 @@ interface Estimate {
   paperSize: string;
   particulars: any[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }
@@ -99,8 +102,11 @@ export default function EstimatesPage() {
         paperSize: estimate.paperSize,
         particulars: estimate.particulars,
         total: estimate.total,
+        hasDiscount: estimate.hasDiscount,
+        discountPercentage: estimate.discountPercentage,
+        discountAmount: estimate.discountAmount,
+        priceAfterDiscount: estimate.priceAfterDiscount,
         hasVAT: estimate.hasVAT,
-        subtotal: estimate.subtotal,
         vatAmount: estimate.vatAmount,
         grandTotal: estimate.grandTotal,
       });

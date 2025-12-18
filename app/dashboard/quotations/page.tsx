@@ -17,8 +17,11 @@ interface Quotation {
   phoneNumber: string;
   particulars: any[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }

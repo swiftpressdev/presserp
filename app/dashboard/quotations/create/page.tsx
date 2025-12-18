@@ -20,6 +20,8 @@ export default function CreateQuotationPage() {
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
   const [hasVAT, setHasVAT] = useState(false);
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,6 +63,8 @@ export default function CreateQuotationPage() {
           ...formData,
           particulars: indexedParticulars,
           hasVAT,
+          hasDiscount,
+          discountPercentage: hasDiscount ? discountPercentage : 0,
         }),
       });
 
@@ -141,6 +145,10 @@ export default function CreateQuotationPage() {
               onChange={setParticulars}
               hasVAT={hasVAT}
               onVATChange={setHasVAT}
+              hasDiscount={hasDiscount}
+              onDiscountChange={setHasDiscount}
+              discountPercentage={discountPercentage}
+              onDiscountPercentageChange={setDiscountPercentage}
             />
           </div>
 

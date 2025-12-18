@@ -16,8 +16,11 @@ interface Quotation {
   phoneNumber: string;
   particulars: Particular[];
   total: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
   hasVAT: boolean;
-  subtotal?: number;
   vatAmount?: number;
   grandTotal: number;
 }
@@ -206,21 +209,31 @@ export default function ViewQuotationPage() {
                   <span className="text-sm font-medium text-gray-700">Total:</span>
                   <span className="text-sm text-gray-900">{quotation.total.toFixed(2)}</span>
                 </div>
-                {quotation.hasVAT && (
+                {quotation.hasDiscount && quotation.discountPercentage && quotation.discountPercentage > 0 && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-                      <span className="text-sm text-gray-900">
-                        {quotation.subtotal?.toFixed(2) || '0.00'}
+                      <span className="text-sm font-medium text-gray-700">
+                        Discount ({quotation.discountPercentage}%):
+                      </span>
+                      <span className="text-sm text-red-600">
+                        -{quotation.discountAmount?.toFixed(2) || '0.00'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                      <span className="text-sm font-medium text-gray-700">Price After Discount:</span>
                       <span className="text-sm text-gray-900">
-                        {quotation.vatAmount?.toFixed(2) || '0.00'}
+                        {quotation.priceAfterDiscount?.toFixed(2) || '0.00'}
                       </span>
                     </div>
                   </>
+                )}
+                {quotation.hasVAT && (
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                    <span className="text-sm text-gray-900">
+                      {quotation.vatAmount?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
                 )}
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-sm font-bold text-gray-900">Grand Total:</span>
