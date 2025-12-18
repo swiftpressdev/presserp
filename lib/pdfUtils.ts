@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getSettingsForPDF, loadImageForPDF, PDFAssets } from './settingsHelper';
+import { getCurrentBSDate, formatBSDate } from './dateUtils';
 
 interface Particular {
   sn: number;
@@ -32,7 +33,7 @@ async function addCompanyAssets(
   includeStamp: boolean = true,
   includeSignature: boolean = true
 ) {
-  let xPos = 14;
+  let xPos = 20;
   
   // Add company logo at top right if available
   if (assets.companyLogo) {
@@ -44,16 +45,20 @@ async function addCompanyAssets(
     }
   }
   
-  // Add prepared by section at bottom
-  let preparedByY = finalY + 30;
-  doc.setFontSize(9);
-  doc.text('Prepared By:', xPos, preparedByY);
-  
   // Add signature if available
+  let signatureY = finalY + 20;
   if (includeSignature && assets.esignature) {
     try {
       const signatureData = await loadImageForPDF(assets.esignature);
-      doc.addImage(signatureData, 'PNG', xPos, preparedByY + 5, 30, 15, undefined, 'FAST');
+      doc.addImage(signatureData, 'PNG', xPos, signatureY, 30, 15, undefined, 'FAST');
+      // Add horizontal bar above "Authorized Signature" text
+      const textY = signatureY + 18;
+      const textWidth = doc.getTextWidth('Authorized Signature');
+      doc.setLineWidth(0.2);
+      doc.line(xPos, textY - 4, xPos + textWidth, textY - 4);
+      // Add "Authorized Signature" text below the signature
+      doc.setFontSize(9);
+      doc.text('Authorized Signature', xPos, textY);
     } catch (error) {
       console.error('Failed to add signature:', error);
     }
@@ -63,7 +68,7 @@ async function addCompanyAssets(
   if (includeStamp && assets.companyStamp) {
     try {
       const stampData = await loadImageForPDF(assets.companyStamp);
-      doc.addImage(stampData, 'PNG', xPos + 50, preparedByY + 5, 30, 30, undefined, 'FAST');
+      doc.addImage(stampData, 'PNG', xPos + 50, signatureY, 30, 30, undefined, 'FAST');
     } catch (error) {
       console.error('Failed to add stamp:', error);
     }
@@ -81,9 +86,10 @@ interface QuotationData {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 export async function generateQuotationPDF(data: QuotationData) {
@@ -99,13 +105,46 @@ export async function generateQuotationPDF(data: QuotationData) {
   }
 
   doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
   doc.text('QUOTATION', 105, 20 + letterheadOffset, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
 
+  // Add current date
+  const currentDate = formatBSDate(getCurrentBSDate());
   doc.setFontSize(10);
-  doc.text(`Quotation No: ${data.quotationSN}`, 14, 35 + letterheadOffset);
-  doc.text(`Party Name: ${data.partyName}`, 14, 42 + letterheadOffset);
-  doc.text(`Address: ${data.address}`, 14, 49 + letterheadOffset);
-  doc.text(`Phone: ${data.phoneNumber}`, 14, 56 + letterheadOffset);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Date: ', 20, 35 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const dateX = 20 + doc.getTextWidth('Date: ') + 2;
+  doc.text(currentDate, dateX, 35 + letterheadOffset);
+
+  // Quotation No with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Quotation No: ', 20, 42 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const quotationNoX = 20 + doc.getTextWidth('Quotation No: ') + 2;
+  doc.text(data.quotationSN, quotationNoX, 42 + letterheadOffset);
+
+  // Party Name with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Party Name: ', 20, 49 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const partyNameX = 20 + doc.getTextWidth('Party Name: ') + 2;
+  doc.text(data.partyName, partyNameX, 49 + letterheadOffset);
+
+  // Address with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Address: ', 20, 56 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const addressX = 20 + doc.getTextWidth('Address: ') + 2;
+  doc.text(data.address, addressX, 56 + letterheadOffset);
+
+  // Phone with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Phone: ', 20, 63 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const phoneX = 20 + doc.getTextWidth('Phone: ') + 2;
+  doc.text(data.phoneNumber, phoneX, 63 + letterheadOffset);
 
   const tableData = data.particulars.map((item) => [
     item.sn,
@@ -116,34 +155,74 @@ export async function generateQuotationPDF(data: QuotationData) {
   ]);
 
   autoTable(doc, {
-    startY: 65 + letterheadOffset,
+    startY: 70 + letterheadOffset,
     head: [['SN', 'Particulars', 'Quantity', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
-    headStyles: { fillColor: [66, 139, 202] },
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
   });
 
   let currentY = (doc as any).lastAutoTable.finalY + 10;
 
-  doc.text(`Total: ${data.total.toFixed(2)}`, 14, currentY);
-  currentY += 7;
-
-  // Show discount if applied
+  // Show discount breakdown if applied (before subtotal)
   if (data.hasDiscount && data.discountPercentage && data.discountPercentage > 0) {
-    doc.text(`Discount (${data.discountPercentage}%): -${data.discountAmount?.toFixed(2)}`, 14, currentY);
-    currentY += 7;
-    doc.text(`Price After Discount: ${data.priceAfterDiscount?.toFixed(2)}`, 14, currentY);
-    currentY += 7;
-  }
-
-  // Show VAT if applied
-  if (data.hasVAT) {
-    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, currentY);
+    const discountBase = data.vatType === 'included' ? Number((data.total / 1.13).toFixed(2)) : data.total;
+    doc.text(`Discount (${data.discountPercentage}% on ${discountBase.toFixed(2)}): -${data.discountAmount?.toFixed(2)}`, 20, currentY);
     currentY += 7;
   }
 
-  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, currentY);
+  // Show breakdown based on VAT type
+  if (data.vatType === 'excluded') {
+    // VAT Excluded: Sub Total, VAT Amount, Grand Total
+    const subtotal = data.priceAfterDiscount || data.total;
+    doc.text(`Sub Total: ${subtotal.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    
+    if (data.vatAmount) {
+      doc.text(`VAT Amount (13%): ${data.vatAmount.toFixed(2)}`, 20, currentY);
+      currentY += 7;
+    }
+  } else if (data.vatType === 'included') {
+    // VAT Included: Sub Total, Base Price (VAT extracted), Extracted VAT Amount, Grand Total
+    doc.text(`Sub Total: ${data.total.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    
+    const basePrice = Number((data.total / 1.13).toFixed(2));
+    const extractedVAT = Number((data.total - basePrice).toFixed(2));
+    doc.text(`Base Price (VAT extracted): ${basePrice.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    doc.text(`Extracted VAT Amount (13%): ${extractedVAT.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+  } else {
+    // No VAT: Just show total
+    doc.text(`Sub Total: ${data.total.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+  }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 20, currentY);
+  doc.setFont('helvetica', 'normal');
   currentY += 7;
+
+  // Add remarks if present
+  if (data.remarks && data.remarks.trim()) {
+    currentY += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Remarks:', 20, currentY);
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const remarksLines = doc.splitTextToSize(data.remarks, 180);
+    doc.text(remarksLines, 20, currentY);
+    currentY += remarksLines.length * 5;
+  }
 
   // Add company assets (logo, stamp, signature)
   await addCompanyAssets(doc, assets, currentY);
@@ -166,9 +245,10 @@ interface EstimateData {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 export async function generateEstimatePDF(data: EstimateData) {
@@ -184,17 +264,31 @@ export async function generateEstimatePDF(data: EstimateData) {
   }
 
   doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
   doc.text('ESTIMATE', 105, 20 + letterheadOffset, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
 
   doc.setFontSize(10);
-  doc.text(`Estimate No: ${data.estimateNumber}`, 14, 35 + letterheadOffset);
-  doc.text(`Date: ${data.estimateDate}`, 14, 42 + letterheadOffset);
-  doc.text(`Client: ${data.clientName}`, 14, 49 + letterheadOffset);
-  doc.text(`Job No: ${data.jobNumber}`, 14, 56 + letterheadOffset);
-  doc.text(`Paper Size: ${data.paperSize}`, 14, 63 + letterheadOffset);
+  // Estimate No with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Estimate No: ', 20, 35 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const estimateNoX = 20 + doc.getTextWidth('Estimate No: ') + 2;
+  doc.text(data.estimateNumber, estimateNoX, 35 + letterheadOffset);
+
+  // Date with bold label
+  doc.setFont('helvetica', 'bold');
+  doc.text('Date: ', 20, 42 + letterheadOffset);
+  doc.setFont('helvetica', 'normal');
+  const dateX = 20 + doc.getTextWidth('Date: ') + 2;
+  doc.text(data.estimateDate, dateX, 42 + letterheadOffset);
+
+  doc.text(`Client: ${data.clientName}`, 20, 49 + letterheadOffset);
+  doc.text(`Job No: ${data.jobNumber}`, 20, 56 + letterheadOffset);
+  doc.text(`Paper Size: ${data.paperSize}`, 20, 63 + letterheadOffset);
   doc.text(
     `Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`,
-    14,
+    20,
     70 + letterheadOffset
   );
 
@@ -211,30 +305,70 @@ export async function generateEstimatePDF(data: EstimateData) {
     head: [['SN', 'Particulars', 'Quantity', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
-    headStyles: { fillColor: [66, 139, 202] },
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
   });
 
   let currentY = (doc as any).lastAutoTable.finalY + 10;
 
-  doc.text(`Total: ${data.total.toFixed(2)}`, 14, currentY);
-  currentY += 7;
-
-  // Show discount if applied
+  // Show discount breakdown if applied (before subtotal)
   if (data.hasDiscount && data.discountPercentage && data.discountPercentage > 0) {
-    doc.text(`Discount (${data.discountPercentage}%): -${data.discountAmount?.toFixed(2)}`, 14, currentY);
-    currentY += 7;
-    doc.text(`Price After Discount: ${data.priceAfterDiscount?.toFixed(2)}`, 14, currentY);
-    currentY += 7;
-  }
-
-  // Show VAT if applied
-  if (data.hasVAT) {
-    doc.text(`VAT (13%): ${data.vatAmount?.toFixed(2)}`, 14, currentY);
+    const discountBase = data.vatType === 'included' ? Number((data.total / 1.13).toFixed(2)) : data.total;
+    doc.text(`Discount (${data.discountPercentage}% on ${discountBase.toFixed(2)}): -${data.discountAmount?.toFixed(2)}`, 20, currentY);
     currentY += 7;
   }
 
-  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, currentY);
+  // Show breakdown based on VAT type
+  if (data.vatType === 'excluded') {
+    // VAT Excluded: Sub Total, VAT Amount, Grand Total
+    const subtotal = data.priceAfterDiscount || data.total;
+    doc.text(`Sub Total: ${subtotal.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    
+    if (data.vatAmount) {
+      doc.text(`VAT Amount (13%): ${data.vatAmount.toFixed(2)}`, 20, currentY);
+      currentY += 7;
+    }
+  } else if (data.vatType === 'included') {
+    // VAT Included: Sub Total, Base Price (VAT extracted), Extracted VAT Amount, Grand Total
+    doc.text(`Sub Total: ${data.total.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    
+    const basePrice = Number((data.total / 1.13).toFixed(2));
+    const extractedVAT = Number((data.total - basePrice).toFixed(2));
+    doc.text(`Base Price (VAT extracted): ${basePrice.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+    doc.text(`Extracted VAT Amount (13%): ${extractedVAT.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+  } else {
+    // No VAT: Just show total
+    doc.text(`Sub Total: ${data.total.toFixed(2)}`, 20, currentY);
+    currentY += 7;
+  }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 20, currentY);
+  doc.setFont('helvetica', 'normal');
   currentY += 7;
+
+  // Add remarks if present
+  if (data.remarks && data.remarks.trim()) {
+    currentY += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Remarks:', 20, currentY);
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const remarksLines = doc.splitTextToSize(data.remarks, 180);
+    doc.text(remarksLines, 20, currentY);
+    currentY += remarksLines.length * 5;
+  }
 
   // Add company assets (logo, stamp, signature)
   await addCompanyAssets(doc, assets, currentY);
@@ -297,108 +431,108 @@ export async function generateJobPDF(data: JobData) {
   let yPos = 35 + letterheadOffset;
   doc.setFontSize(10);
 
-  doc.text(`Job No: ${data.jobNo}`, 14, yPos);
+  doc.text(`Job No: ${data.jobNo}`, 20, yPos);
   yPos += 7;
-  doc.text(`Job Name: ${data.jobName}`, 14, yPos);
+  doc.text(`Job Name: ${data.jobName}`, 20, yPos);
   yPos += 7;
-  doc.text(`Client: ${data.clientName}`, 14, yPos);
+  doc.text(`Client: ${data.clientName}`, 20, yPos);
   yPos += 7;
-  doc.text(`Job Date: ${data.jobDate}`, 14, yPos);
+  doc.text(`Job Date: ${data.jobDate}`, 20, yPos);
   yPos += 7;
-  doc.text(`Delivery Date: ${data.deliveryDate}`, 14, yPos);
+  doc.text(`Delivery Date: ${data.deliveryDate}`, 20, yPos);
   yPos += 7;
-  doc.text(`Job Type: ${data.jobTypes.join(', ')}`, 14, yPos);
+  doc.text(`Job Type: ${data.jobTypes.join(', ')}`, 20, yPos);
   yPos += 7;
-  doc.text(`Quantity: ${data.quantity}`, 14, yPos);
+  doc.text(`Quantity: ${data.quantity}`, 20, yPos);
   yPos += 7;
-  doc.text(`Paper Type: ${data.paperName}`, 14, yPos);
+  doc.text(`Paper Type: ${data.paperName}`, 20, yPos);
   yPos += 7;
-  doc.text(`Paper Size: ${data.paperSize}`, 14, yPos);
+  doc.text(`Paper Size: ${data.paperSize}`, 20, yPos);
   yPos += 7;
-  doc.text(`Total Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`, 14, yPos);
+  doc.text(`Total Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`, 20, yPos);
   yPos += 7;
   
   if (data.pageColor) {
     const pageColorValue = data.pageColor === 'Other' && data.pageColorOther ? data.pageColorOther : data.pageColor;
-    doc.text(`Page Color: ${pageColorValue}`, 14, yPos);
+    doc.text(`Page Color: ${pageColorValue}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.bookSize) {
     const bookSizeValue = data.bookSize === 'Other' && data.bookSizeOther ? data.bookSizeOther : data.bookSize;
-    doc.text(`Book Size: ${bookSizeValue}`, 14, yPos);
+    doc.text(`Book Size: ${bookSizeValue}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.totalPlate) {
     const totalPlateValue = data.totalPlate === 'Other' && data.totalPlateOther ? data.totalPlateOther : data.totalPlate;
-    doc.text(`Total Plate: ${totalPlateValue}`, 14, yPos);
+    doc.text(`Total Plate: ${totalPlateValue}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.totalFarma) {
     const totalFarmaValue = data.totalFarma === 'Other' && data.totalFarmaOther ? data.totalFarmaOther : data.totalFarma;
-    doc.text(`Total Farma: ${totalFarmaValue}`, 14, yPos);
+    doc.text(`Total Farma: ${totalFarmaValue}`, 20, yPos);
     yPos += 7;
   }
   
-  doc.text(`Plate By: ${data.plateBy}`, 14, yPos);
+  doc.text(`Plate By: ${data.plateBy}`, 20, yPos);
   yPos += 7;
   
   if (data.plateFrom) {
-    doc.text(`Plate From: ${data.plateFrom}`, 14, yPos);
+    doc.text(`Plate From: ${data.plateFrom}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.plateSize) {
     const plateSizeValue = data.plateSize === 'Other' && data.plateSizeOther ? data.plateSizeOther : data.plateSize;
-    doc.text(`Plate Size: ${plateSizeValue}`, 14, yPos);
+    doc.text(`Plate Size: ${plateSizeValue}`, 20, yPos);
     yPos += 7;
   }
   
-  doc.text(`Machine: ${data.machineName}`, 14, yPos);
+  doc.text(`Machine: ${data.machineName}`, 20, yPos);
   yPos += 7;
   
   if (data.laminationThermal) {
-    doc.text(`Lamination Thermal: ${data.laminationThermal}`, 14, yPos);
+    doc.text(`Lamination Thermal: ${data.laminationThermal}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.normal) {
-    doc.text(`Normal: ${data.normal}`, 14, yPos);
+    doc.text(`Normal: ${data.normal}`, 20, yPos);
     yPos += 7;
   }
   
-  doc.text(`Folding: ${data.folding ? 'Yes' : 'No'}`, 14, yPos);
+  doc.text(`Folding: ${data.folding ? 'Yes' : 'No'}`, 20, yPos);
   yPos += 7;
   
   if (data.binding) {
-    doc.text(`Binding: ${data.binding}`, 14, yPos);
+    doc.text(`Binding: ${data.binding}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.stitch) {
-    doc.text(`Stitch: ${data.stitch}`, 14, yPos);
+    doc.text(`Stitch: ${data.stitch}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.additional && data.additional.length > 0) {
-    doc.text(`Additional Services: ${data.additional.join(', ')}`, 14, yPos);
+    doc.text(`Additional Services: ${data.additional.join(', ')}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.relatedToJobNo) {
-    doc.text(`Related To Job: ${data.relatedToJobNo}`, 14, yPos);
+    doc.text(`Related To Job: ${data.relatedToJobNo}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.remarks) {
-    doc.text(`Remarks: ${data.remarks}`, 14, yPos);
+    doc.text(`Remarks: ${data.remarks}`, 20, yPos);
     yPos += 7;
   }
   
   if (data.specialInstructions) {
-    doc.text(`Special Instructions: ${data.specialInstructions}`, 14, yPos);
+    doc.text(`Special Instructions: ${data.specialInstructions}`, 20, yPos);
     yPos += 7;
   }
 
@@ -441,13 +575,13 @@ export async function generateChallanPDF(data: ChallanData) {
   let yPos = 35 + letterheadOffset;
   doc.setFontSize(10);
 
-  doc.text(`Challan No: ${data.challanNumber}`, 14, yPos);
+  doc.text(`Challan No: ${data.challanNumber}`, 20, yPos);
   yPos += 7;
-  doc.text(`Date: ${data.challanDate}`, 14, yPos);
+  doc.text(`Date: ${data.challanDate}`, 20, yPos);
   yPos += 7;
-  doc.text(`Destination: ${data.destination}`, 14, yPos);
+  doc.text(`Destination: ${data.destination}`, 20, yPos);
   yPos += 7;
-  doc.text(`Estimate Reference No: ${data.estimateReferenceNo}`, 14, yPos);
+  doc.text(`Estimate Reference No: ${data.estimateReferenceNo}`, 20, yPos);
   yPos += 10;
 
   const tableData = data.particulars.map((p) => [
@@ -460,9 +594,13 @@ export async function generateChallanPDF(data: ChallanData) {
     startY: yPos,
     head: [['SN', 'Particulars', 'Quantity']],
     body: tableData,
-    theme: 'striped',
-    headStyles: { fillColor: [66, 139, 202] },
-    styles: { fontSize: 9 },
+    theme: 'grid',
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
     columnStyles: {
       0: { cellWidth: 20 },
       1: { cellWidth: 'auto' },
@@ -472,7 +610,7 @@ export async function generateChallanPDF(data: ChallanData) {
 
   const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
   doc.setFontSize(10);
-  doc.text(`Total Units: ${data.totalUnits.toFixed(2)}`, 14, finalY + 10);
+  doc.text(`Total Units: ${data.totalUnits.toFixed(2)}`, 20, finalY + 10);
 
   // Add company assets (logo, stamp, signature)
   await addCompanyAssets(doc, assets, finalY + 10);

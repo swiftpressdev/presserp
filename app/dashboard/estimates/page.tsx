@@ -26,9 +26,10 @@ interface Estimate {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 interface Client {
@@ -106,9 +107,10 @@ export default function EstimatesPage() {
         discountPercentage: estimate.discountPercentage,
         discountAmount: estimate.discountAmount,
         priceAfterDiscount: estimate.priceAfterDiscount,
-        hasVAT: estimate.hasVAT,
+        vatType: estimate.vatType,
         vatAmount: estimate.vatAmount,
         grandTotal: estimate.grandTotal,
+        remarks: estimate.remarks,
       });
       toast.success('PDF exported successfully');
     } catch (error) {

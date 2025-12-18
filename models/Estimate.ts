@@ -25,9 +25,10 @@ export interface IEstimate extends Document {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -121,9 +122,10 @@ const EstimateSchema = new Schema<IEstimate>(
     priceAfterDiscount: {
       type: Number,
     },
-    hasVAT: {
-      type: Boolean,
-      default: false,
+    vatType: {
+      type: String,
+      enum: ['excluded', 'included', 'none'],
+      default: 'none',
     },
     vatAmount: {
       type: Number,
@@ -131,6 +133,10 @@ const EstimateSchema = new Schema<IEstimate>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   baseSchemaOptions

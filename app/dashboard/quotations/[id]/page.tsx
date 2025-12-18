@@ -18,11 +18,12 @@ export default function EditQuotationPage() {
     partyName: '',
     address: '',
     phoneNumber: '',
+    remarks: '',
   });
   const [particulars, setParticulars] = useState<Particular[]>([
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
-  const [hasVAT, setHasVAT] = useState(false);
+  const [vatType, setVatType] = useState<'excluded' | 'included' | 'none'>('none');
   const [hasDiscount, setHasDiscount] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(0);
 
@@ -51,6 +52,7 @@ export default function EditQuotationPage() {
         partyName: data.quotation.partyName || '',
         address: data.quotation.address || '',
         phoneNumber: data.quotation.phoneNumber || '',
+        remarks: data.quotation.remarks || '',
       });
 
       const convertedParticulars: Particular[] = data.quotation.particulars.map((p: any) => ({
@@ -64,7 +66,7 @@ export default function EditQuotationPage() {
       setParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
       ]);
-      setHasVAT(data.quotation.hasVAT || false);
+      setVatType(data.quotation.vatType || 'none');
       setHasDiscount(data.quotation.hasDiscount || false);
       setDiscountPercentage(data.quotation.discountPercentage || 0);
     } catch (error: any) {
@@ -106,7 +108,9 @@ export default function EditQuotationPage() {
         body: JSON.stringify({
           ...formData,
           particulars: indexedParticulars,
-          hasVAT,
+          vatType,
+          hasDiscount,
+          discountPercentage: hasDiscount ? discountPercentage : 0,
         }),
       });
 
@@ -195,12 +199,25 @@ export default function EditQuotationPage() {
             <ParticularsTable
               particulars={particulars}
               onChange={setParticulars}
-              hasVAT={hasVAT}
-              onVATChange={setHasVAT}
+              vatType={vatType}
+              onVATTypeChange={setVatType}
               hasDiscount={hasDiscount}
               onDiscountChange={setHasDiscount}
               discountPercentage={discountPercentage}
               onDiscountPercentageChange={setDiscountPercentage}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Remarks
+            </label>
+            <textarea
+              value={formData.remarks}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter any additional remarks or notes..."
             />
           </div>
 

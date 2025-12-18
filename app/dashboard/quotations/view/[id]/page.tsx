@@ -20,9 +20,10 @@ interface Quotation {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 export default function ViewQuotationPage() {
@@ -227,9 +228,11 @@ export default function ViewQuotationPage() {
                     </div>
                   </>
                 )}
-                {quotation.hasVAT && (
+                {quotation.vatType !== 'none' && (
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      VAT (13% {quotation.vatType === 'included' ? 'Included' : 'Excluded'}):
+                    </span>
                     <span className="text-sm text-gray-900">
                       {quotation.vatAmount?.toFixed(2) || '0.00'}
                     </span>
@@ -244,6 +247,15 @@ export default function ViewQuotationPage() {
               </div>
             </div>
           </div>
+
+          {quotation.remarks && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Remarks</h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{quotation.remarks}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

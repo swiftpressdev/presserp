@@ -20,7 +20,8 @@ const quotationSchema = z.object({
   particulars: z.array(particularSchema).min(1, 'At least one particular is required'),
   hasDiscount: z.boolean().optional(),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
-  hasVAT: z.boolean(),
+  vatType: z.enum(['excluded', 'included', 'none']),
+  remarks: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -54,20 +55,27 @@ export async function POST(request: NextRequest) {
 
     const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
 
-    // Step 1: Calculate discount (if enabled)
-    let discountAmount = 0;
-    let priceAfterDiscount = total;
+    let basePrice = total;
     
-    if (validatedData.hasDiscount && validatedData.discountPercentage && validatedData.discountPercentage > 0) {
-      discountAmount = Number(((total * validatedData.discountPercentage) / 100).toFixed(2));
-      priceAfterDiscount = Number((total - discountAmount).toFixed(2));
+    // If VAT is included in the price, extract it first
+    if (validatedData.vatType === 'included') {
+      basePrice = Number((total / 1.13).toFixed(2));
     }
     
-    // Step 2: Calculate VAT on the discounted price (if enabled)
+    // Step 1: Calculate discount on base price (if enabled)
+    let discountAmount = 0;
+    let priceAfterDiscount = basePrice;
+    
+    if (validatedData.hasDiscount && validatedData.discountPercentage && validatedData.discountPercentage > 0) {
+      discountAmount = Number(((basePrice * validatedData.discountPercentage) / 100).toFixed(2));
+      priceAfterDiscount = Number((basePrice - discountAmount).toFixed(2));
+    }
+    
+    // Step 2: Calculate VAT based on type
     let vatAmount = 0;
     let grandTotal = priceAfterDiscount;
     
-    if (validatedData.hasVAT) {
+    if (validatedData.vatType === 'excluded' || validatedData.vatType === 'included') {
       vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
       grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
     }
@@ -82,7 +90,8 @@ export async function POST(request: NextRequest) {
       discountPercentage: validatedData.hasDiscount ? validatedData.discountPercentage : undefined,
       discountAmount: validatedData.hasDiscount && discountAmount > 0 ? discountAmount : undefined,
       priceAfterDiscount: validatedData.hasDiscount && discountAmount > 0 ? priceAfterDiscount : undefined,
-      vatAmount: validatedData.hasVAT ? vatAmount : undefined,
+      vatType: validatedData.vatType,
+      vatAmount: validatedData.vatType !== 'none' ? vatAmount : undefined,
       grandTotal,
     });
 

@@ -21,9 +21,10 @@ interface Quotation {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 export default function QuotationsPage() {

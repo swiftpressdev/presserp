@@ -21,9 +21,10 @@ export interface IQuotation extends Document {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -101,9 +102,10 @@ const QuotationSchema = new Schema<IQuotation>(
     priceAfterDiscount: {
       type: Number,
     },
-    hasVAT: {
-      type: Boolean,
-      default: false,
+    vatType: {
+      type: String,
+      enum: ['excluded', 'included', 'none'],
+      default: 'none',
     },
     vatAmount: {
       type: Number,
@@ -111,6 +113,10 @@ const QuotationSchema = new Schema<IQuotation>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   baseSchemaOptions

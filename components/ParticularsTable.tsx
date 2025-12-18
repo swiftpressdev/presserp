@@ -13,8 +13,8 @@ export interface Particular {
 interface ParticularsTableProps {
   particulars: Particular[];
   onChange: (particulars: Particular[]) => void;
-  hasVAT: boolean;
-  onVATChange: (hasVAT: boolean) => void;
+  vatType: 'excluded' | 'included' | 'none';
+  onVATTypeChange: (vatType: 'excluded' | 'included' | 'none') => void;
   hasDiscount?: boolean;
   onDiscountChange?: (hasDiscount: boolean) => void;
   discountPercentage?: number;
@@ -24,8 +24,8 @@ interface ParticularsTableProps {
 export default function ParticularsTable({
   particulars,
   onChange,
-  hasVAT,
-  onVATChange,
+  vatType,
+  onVATTypeChange,
   hasDiscount = false,
   onDiscountChange,
   discountPercentage = 0,
@@ -68,20 +68,35 @@ export default function ParticularsTable({
 
   const total = particulars.reduce((sum, item) => sum + item.amount, 0);
   
-  // Step 1: Calculate discount (if enabled)
-  let discountAmount = 0;
-  let priceAfterDiscount = total;
+  let basePrice = total;
+  let extractedVAT = 0;
   
-  if (hasDiscount && discountPercentage > 0) {
-    discountAmount = Number(((total * discountPercentage) / 100).toFixed(2));
-    priceAfterDiscount = Number((total - discountAmount).toFixed(2));
+  // If VAT is included in the price, extract it first
+  if (vatType === 'included') {
+    // Reverse the VAT calculation: base = total / 1.13
+    basePrice = Number((total / 1.13).toFixed(2));
+    extractedVAT = Number((total - basePrice).toFixed(2));
   }
   
-  // Step 2: Calculate VAT on the discounted price (if enabled)
+  // Step 1: Calculate discount on base price (if enabled)
+  let discountAmount = 0;
+  let priceAfterDiscount = basePrice;
+  
+  if (hasDiscount && discountPercentage > 0) {
+    discountAmount = Number(((basePrice * discountPercentage) / 100).toFixed(2));
+    priceAfterDiscount = Number((basePrice - discountAmount).toFixed(2));
+  }
+  
+  // Step 2: Calculate VAT based on type
   let vatAmount = 0;
   let grandTotal = priceAfterDiscount;
   
-  if (hasVAT) {
+  if (vatType === 'excluded') {
+    // Add VAT on top of the discounted price
+    vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+    grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
+  } else if (vatType === 'included') {
+    // VAT was already extracted, recalculate on discounted price
     vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
     grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
   }
@@ -236,24 +251,46 @@ export default function ParticularsTable({
               <input
                 type="radio"
                 name="vat"
-                checked={hasVAT}
-                onChange={() => onVATChange(true)}
+                checked={vatType === 'excluded'}
+                onChange={() => onVATTypeChange('excluded')}
               />
-              <span>Yes</span>
+              <span>Excluded</span>
             </label>
             <label className="flex items-center gap-2">
               <input
                 type="radio"
                 name="vat"
-                checked={!hasVAT}
-                onChange={() => onVATChange(false)}
+                checked={vatType === 'included'}
+                onChange={() => onVATTypeChange('included')}
               />
-              <span>No</span>
+              <span>Included</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="vat"
+                checked={vatType === 'none'}
+                onChange={() => onVATTypeChange('none')}
+              />
+              <span>None</span>
             </label>
           </div>
         </div>
 
-        {hasVAT && (
+        {vatType === 'included' && (
+          <>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Base Price (VAT extracted):</span>
+              <span>{basePrice.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Extracted VAT (13%):</span>
+              <span>{extractedVAT.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+
+        {vatType !== 'none' && (
           <div className="flex items-center justify-between">
             <span className="font-medium">VAT (13%):</span>
             <span>{vatAmount.toFixed(2)}</span>

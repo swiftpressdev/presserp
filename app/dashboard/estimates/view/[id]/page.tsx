@@ -25,9 +25,10 @@ interface Estimate {
   discountPercentage?: number;
   discountAmount?: number;
   priceAfterDiscount?: number;
-  hasVAT: boolean;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  remarks?: string;
 }
 
 export default function ViewEstimatePage() {
@@ -257,9 +258,11 @@ export default function ViewEstimatePage() {
                     </div>
                   </>
                 )}
-                {estimate.hasVAT && (
+                {estimate.vatType !== 'none' && (
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">VAT (13%):</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      VAT (13% {estimate.vatType === 'included' ? 'Included' : 'Excluded'}):
+                    </span>
                     <span className="text-sm text-gray-900">
                       {estimate.vatAmount?.toFixed(2) || '0.00'}
                     </span>
@@ -274,6 +277,15 @@ export default function ViewEstimatePage() {
               </div>
             </div>
           </div>
+
+          {estimate.remarks && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Remarks</h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{estimate.remarks}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

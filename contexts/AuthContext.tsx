@@ -26,28 +26,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const checkSession = async () => {
+  const checkSession = async (): Promise<User | null> => {
     try {
       const response = await fetch('/api/auth/session', {
         credentials: 'include',
       });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.authenticated) {
-          setUser(data.user);
-          return data.user;
-        } else {
-          setUser(null);
-          return null;
-        }
+      
+      // Session endpoint now always returns 200, so check the authenticated flag
+      const data = await response.json();
+      
+      if (data.authenticated) {
+        setUser(data.user);
+        return data.user;
       } else {
+        // Token expired or invalid - clear user
         setUser(null);
         return null;
       }
     } catch (error) {
+      // Network errors - don't clear user, might be temporary
       console.error('Session check failed:', error);
-      setUser(null);
-      return null;
+      // Return current user state to avoid unnecessary logout
+      return user;
     }
   };
 
@@ -59,6 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     initSession();
   }, []);
+
+  // Set up periodic session check separately to avoid dependency issues
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(async () => {
+      await checkSession();
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     try {
