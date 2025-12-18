@@ -22,6 +22,10 @@ interface Settings {
   companyStamp?: string;
   letterhead?: string;
   esignature?: string;
+  companyLogoUseIn?: string[];
+  companyStampUseIn?: string[];
+  letterheadUseIn?: string[];
+  esignatureUseIn?: string[];
 }
 
 export default function SettingsPage() {
@@ -44,6 +48,10 @@ export default function SettingsPage() {
     companyStamp: '',
     letterhead: '',
     esignature: '',
+    companyLogoUseIn: [],
+    companyStampUseIn: [],
+    letterheadUseIn: [],
+    esignatureUseIn: [],
   });
   const [pendingFiles, setPendingFiles] = useState<{
     [key: string]: File | null;
@@ -156,9 +164,10 @@ export default function SettingsPage() {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      // First, upload all pending files
+      // Start with current settings (includes all fields including asset usage preferences)
       const updatedSettings = { ...settings };
       
+      // First, upload all pending files and update URLs
       for (const [assetType, file] of Object.entries(pendingFiles)) {
         if (file) {
           setUploading({ ...uploading, [assetType]: true });
@@ -198,7 +207,7 @@ export default function SettingsPage() {
       setPendingFiles({});
       setFilePreviews({});
 
-      // Now save settings with updated URLs
+      // Save all settings (updatedSettings already includes asset usage preferences from settings state)
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
@@ -309,6 +318,20 @@ export default function SettingsPage() {
     } finally {
       setUploading({ ...uploading, [assetType]: false });
     }
+  };
+
+  const handleAssetUsageToggle = (
+    assetType: 'companyLogo' | 'companyStamp' | 'letterhead' | 'esignature',
+    documentType: 'Quotation' | 'Job' | 'Estimate' | 'Challan'
+  ) => {
+    const useInField = `${assetType}UseIn` as keyof Settings;
+    const currentUseIn = (settings[useInField] as string[]) || [];
+    
+    const newUseIn = currentUseIn.includes(documentType)
+      ? currentUseIn.filter(type => type !== documentType)
+      : [...currentUseIn, documentType];
+    
+    setSettings({ ...settings, [useInField]: newUseIn });
   };
 
   const handleResetCounterClick = (counterType: 'quotation' | 'job' | 'estimate' | 'challan') => {
@@ -544,6 +567,27 @@ export default function SettingsPage() {
                           ✓ File selected (will be uploaded on save)
                         </p>
                       )}
+                      
+                      {(settings.companyLogo || pendingFiles.companyLogo) && (
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Use Asset In:
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {['Quotation', 'Job', 'Estimate', 'Challan'].map((docType) => (
+                              <label key={docType} className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={(settings.companyLogoUseIn || []).includes(docType)}
+                                  onChange={() => handleAssetUsageToggle('companyLogo', docType as any)}
+                                  className="rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-gray-700">{docType}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -598,6 +642,27 @@ export default function SettingsPage() {
                         <p className="mt-1 text-xs text-blue-600 font-medium">
                           ✓ File selected (will be uploaded on save)
                         </p>
+                      )}
+                      
+                      {(settings.companyStamp || pendingFiles.companyStamp) && (
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Use Asset In:
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {['Quotation', 'Job', 'Estimate', 'Challan'].map((docType) => (
+                              <label key={docType} className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={(settings.companyStampUseIn || []).includes(docType)}
+                                  onChange={() => handleAssetUsageToggle('companyStamp', docType as any)}
+                                  className="rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-gray-700">{docType}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -654,6 +719,27 @@ export default function SettingsPage() {
                           ✓ File selected (will be uploaded on save)
                         </p>
                       )}
+                      
+                      {(settings.letterhead || pendingFiles.letterhead) && (
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Use Asset In (Letterhead as background):
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {['Quotation', 'Job', 'Estimate', 'Challan'].map((docType) => (
+                              <label key={docType} className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={(settings.letterheadUseIn || []).includes(docType)}
+                                  onChange={() => handleAssetUsageToggle('letterhead', docType as any)}
+                                  className="rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-gray-700">{docType}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -708,6 +794,27 @@ export default function SettingsPage() {
                         <p className="mt-1 text-xs text-blue-600 font-medium">
                           ✓ File selected (will be uploaded on save)
                         </p>
+                      )}
+                      
+                      {(settings.esignature || pendingFiles.esignature) && (
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Use Asset In:
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {['Quotation', 'Job', 'Estimate', 'Challan'].map((docType) => (
+                              <label key={docType} className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={(settings.esignatureUseIn || []).includes(docType)}
+                                  onChange={() => handleAssetUsageToggle('esignature', docType as any)}
+                                  className="rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-gray-700">{docType}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

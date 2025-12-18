@@ -19,6 +19,11 @@ export interface ISettings extends Document {
   letterheadPublicId?: string;
   esignature?: string;
   esignaturePublicId?: string;
+  // Asset usage preferences
+  companyLogoUseIn?: string[];
+  companyStampUseIn?: string[];
+  letterheadUseIn?: string[];
+  esignatureUseIn?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +108,23 @@ const SettingsSchema = new Schema<ISettings>(
     esignaturePublicId: {
       type: String,
       trim: true,
+    },
+    // Asset usage preferences
+    companyLogoUseIn: {
+      type: [String],
+      default: [],
+    },
+    companyStampUseIn: {
+      type: [String],
+      default: [],
+    },
+    letterheadUseIn: {
+      type: [String],
+      default: [],
+    },
+    esignatureUseIn: {
+      type: [String],
+      default: [],
     },
   },
   {

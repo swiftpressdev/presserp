@@ -23,6 +23,10 @@ const settingsSchema = z.object({
   letterheadPublicId: z.string().optional(),
   esignature: z.string().optional(),
   esignaturePublicId: z.string().optional(),
+  companyLogoUseIn: z.array(z.string()).optional(),
+  companyStampUseIn: z.array(z.string()).optional(),
+  letterheadUseIn: z.array(z.string()).optional(),
+  esignatureUseIn: z.array(z.string()).optional(),
 });
 
 export async function GET(request: NextRequest) {

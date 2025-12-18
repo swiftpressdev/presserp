@@ -58,9 +58,14 @@ export default function QuotationsPage() {
     }
   };
 
-  const handleExportPDF = (quotation: Quotation) => {
-    generateQuotationPDF(quotation);
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (quotation: Quotation) => {
+    try {
+      await generateQuotationPDF(quotation);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleEdit = (quotation: Quotation) => {

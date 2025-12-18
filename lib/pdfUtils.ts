@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getSettingsForPDF, loadImageForPDF, PDFAssets } from './settingsHelper';
 
 interface Particular {
   sn: number;
@@ -7,6 +8,66 @@ interface Particular {
   quantity: number;
   rate: number;
   amount: number;
+}
+
+// Helper to add letterhead background
+async function addLetterheadBackground(doc: jsPDF, letterheadUrl: string) {
+  try {
+    const imageData = await loadImageForPDF(letterheadUrl);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    // Use PNG format for better quality, auto-detect format
+    const format = letterheadUrl.toLowerCase().includes('.png') ? 'PNG' : 'JPEG';
+    doc.addImage(imageData, format, 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+  } catch (error) {
+    console.error('Failed to add letterhead:', error);
+  }
+}
+
+// Helper to add company assets (logo, stamp, signature)
+async function addCompanyAssets(
+  doc: jsPDF,
+  assets: PDFAssets,
+  finalY: number,
+  includeStamp: boolean = true,
+  includeSignature: boolean = true
+) {
+  let xPos = 14;
+  
+  // Add company logo at top right if available
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      doc.addImage(logoData, 'PNG', 160, 10, 40, 20, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add logo:', error);
+    }
+  }
+  
+  // Add prepared by section at bottom
+  let preparedByY = finalY + 30;
+  doc.setFontSize(9);
+  doc.text('Prepared By:', xPos, preparedByY);
+  
+  // Add signature if available
+  if (includeSignature && assets.esignature) {
+    try {
+      const signatureData = await loadImageForPDF(assets.esignature);
+      doc.addImage(signatureData, 'PNG', xPos, preparedByY + 5, 30, 15, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add signature:', error);
+    }
+  }
+  
+  // Add stamp if available
+  if (includeStamp && assets.companyStamp) {
+    try {
+      const stampData = await loadImageForPDF(assets.companyStamp);
+      doc.addImage(stampData, 'PNG', xPos + 50, preparedByY + 5, 30, 30, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add stamp:', error);
+    }
+  }
 }
 
 interface QuotationData {
@@ -22,17 +83,26 @@ interface QuotationData {
   grandTotal: number;
 }
 
-export function generateQuotationPDF(data: QuotationData) {
+export async function generateQuotationPDF(data: QuotationData) {
+  const assets = await getSettingsForPDF('Quotation');
   const doc = new jsPDF();
 
+  // Vertical offset when letterhead is present (to avoid overlapping with letterhead content)
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
   doc.setFontSize(20);
-  doc.text('QUOTATION', 105, 20, { align: 'center' });
+  doc.text('QUOTATION', 105, 20 + letterheadOffset, { align: 'center' });
 
   doc.setFontSize(10);
-  doc.text(`Quotation No: ${data.quotationSN}`, 14, 35);
-  doc.text(`Party Name: ${data.partyName}`, 14, 42);
-  doc.text(`Address: ${data.address}`, 14, 49);
-  doc.text(`Phone: ${data.phoneNumber}`, 14, 56);
+  doc.text(`Quotation No: ${data.quotationSN}`, 14, 35 + letterheadOffset);
+  doc.text(`Party Name: ${data.partyName}`, 14, 42 + letterheadOffset);
+  doc.text(`Address: ${data.address}`, 14, 49 + letterheadOffset);
+  doc.text(`Phone: ${data.phoneNumber}`, 14, 56 + letterheadOffset);
 
   const tableData = data.particulars.map((item) => [
     item.sn,
@@ -43,7 +113,7 @@ export function generateQuotationPDF(data: QuotationData) {
   ]);
 
   autoTable(doc, {
-    startY: 65,
+    startY: 65 + letterheadOffset,
     head: [['SN', 'Particulars', 'Quantity', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
@@ -61,6 +131,9 @@ export function generateQuotationPDF(data: QuotationData) {
   } else {
     doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 7);
   }
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + (data.hasVAT ? 21 : 7));
 
   doc.save(`Quotation-${data.quotationSN}.pdf`);
 }
@@ -82,22 +155,31 @@ interface EstimateData {
   grandTotal: number;
 }
 
-export function generateEstimatePDF(data: EstimateData) {
+export async function generateEstimatePDF(data: EstimateData) {
+  const assets = await getSettingsForPDF('Estimate');
   const doc = new jsPDF();
 
+  // Vertical offset when letterhead is present (to avoid overlapping with letterhead content)
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
   doc.setFontSize(20);
-  doc.text('ESTIMATE', 105, 20, { align: 'center' });
+  doc.text('ESTIMATE', 105, 20 + letterheadOffset, { align: 'center' });
 
   doc.setFontSize(10);
-  doc.text(`Estimate No: ${data.estimateNumber}`, 14, 35);
-  doc.text(`Date: ${data.estimateDate}`, 14, 42);
-  doc.text(`Client: ${data.clientName}`, 14, 49);
-  doc.text(`Job No: ${data.jobNumber}`, 14, 56);
-  doc.text(`Paper Size: ${data.paperSize}`, 14, 63);
+  doc.text(`Estimate No: ${data.estimateNumber}`, 14, 35 + letterheadOffset);
+  doc.text(`Date: ${data.estimateDate}`, 14, 42 + letterheadOffset);
+  doc.text(`Client: ${data.clientName}`, 14, 49 + letterheadOffset);
+  doc.text(`Job No: ${data.jobNumber}`, 14, 56 + letterheadOffset);
+  doc.text(`Paper Size: ${data.paperSize}`, 14, 63 + letterheadOffset);
   doc.text(
     `Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`,
     14,
-    70
+    70 + letterheadOffset
   );
 
   const tableData = data.particulars.map((item) => [
@@ -109,7 +191,7 @@ export function generateEstimatePDF(data: EstimateData) {
   ]);
 
   autoTable(doc, {
-    startY: 78,
+    startY: 78 + letterheadOffset,
     head: [['SN', 'Particulars', 'Quantity', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
@@ -127,6 +209,9 @@ export function generateEstimatePDF(data: EstimateData) {
   } else {
     doc.text(`Grand Total: ${data.grandTotal.toFixed(2)}`, 14, finalY + 7);
   }
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + (data.hasVAT ? 21 : 7));
 
   doc.save(`Estimate-${data.estimateNumber}.pdf`);
 }
@@ -168,13 +253,22 @@ interface JobData {
   specialInstructions?: string;
 }
 
-export function generateJobPDF(data: JobData) {
+export async function generateJobPDF(data: JobData) {
+  const assets = await getSettingsForPDF('Job');
   const doc = new jsPDF();
 
-  doc.setFontSize(20);
-  doc.text('JOB DETAILS', 105, 20, { align: 'center' });
+  // Vertical offset when letterhead is present (to avoid overlapping with letterhead content)
+  const letterheadOffset = assets.letterhead ? 40 : 0;
 
-  let yPos = 35;
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('JOB DETAILS', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
   doc.setFontSize(10);
 
   doc.text(`Job No: ${data.jobNo}`, 14, yPos);
@@ -279,7 +373,11 @@ export function generateJobPDF(data: JobData) {
   
   if (data.specialInstructions) {
     doc.text(`Special Instructions: ${data.specialInstructions}`, 14, yPos);
+    yPos += 7;
   }
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, yPos);
 
   doc.save(`Job-${data.jobNo}.pdf`);
 }
@@ -299,13 +397,22 @@ interface ChallanData {
   totalUnits: number;
 }
 
-export function generateChallanPDF(data: ChallanData) {
+export async function generateChallanPDF(data: ChallanData) {
+  const assets = await getSettingsForPDF('Challan');
   const doc = new jsPDF();
 
-  doc.setFontSize(20);
-  doc.text('CHALLAN', 105, 20, { align: 'center' });
+  // Vertical offset when letterhead is present (to avoid overlapping with letterhead content)
+  const letterheadOffset = assets.letterhead ? 40 : 0;
 
-  let yPos = 35;
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('CHALLAN', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
   doc.setFontSize(10);
 
   doc.text(`Challan No: ${data.challanNumber}`, 14, yPos);
@@ -340,6 +447,9 @@ export function generateChallanPDF(data: ChallanData) {
   const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
   doc.setFontSize(10);
   doc.text(`Total Units: ${data.totalUnits.toFixed(2)}`, 14, finalY + 10);
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + 10);
 
   doc.save(`Challan-${data.challanNumber}.pdf`);
 }

@@ -83,27 +83,32 @@ export default function EstimatesPage() {
     router.push(`/dashboard/estimates/${estimate._id}`);
   };
 
-  const handleExportPDF = (estimate: Estimate) => {
-    const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
-    const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
-    
-    generateEstimatePDF({
-      estimateNumber: estimate.estimateNumber,
-      estimateDate: formatBSDate(estimate.estimateDate),
-      clientName,
-      jobNumber,
-      totalBWPages: estimate.totalBWPages,
-      totalColorPages: estimate.totalColorPages,
-      totalPages: estimate.totalPages,
-      paperSize: estimate.paperSize,
-      particulars: estimate.particulars,
-      total: estimate.total,
-      hasVAT: estimate.hasVAT,
-      subtotal: estimate.subtotal,
-      vatAmount: estimate.vatAmount,
-      grandTotal: estimate.grandTotal,
-    });
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (estimate: Estimate) => {
+    try {
+      const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
+      const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
+      
+      await generateEstimatePDF({
+        estimateNumber: estimate.estimateNumber,
+        estimateDate: formatBSDate(estimate.estimateDate),
+        clientName,
+        jobNumber,
+        totalBWPages: estimate.totalBWPages,
+        totalColorPages: estimate.totalColorPages,
+        totalPages: estimate.totalPages,
+        paperSize: estimate.paperSize,
+        particulars: estimate.particulars,
+        total: estimate.total,
+        hasVAT: estimate.hasVAT,
+        subtotal: estimate.subtotal,
+        vatAmount: estimate.vatAmount,
+        grandTotal: estimate.grandTotal,
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleDelete = async (estimateId: string, estimateNumber: string) => {

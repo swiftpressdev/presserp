@@ -116,54 +116,59 @@ export default function JobsPage() {
   };
 
 
-  const handleExportPDF = (job: Job) => {
-    const clientName = typeof job.clientId === 'object' ? job.clientId.clientName : '';
-    const paperName = typeof job.paperId === 'object' ? job.paperId.paperName : '';
-    const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '';
-    const relatedToJobNo = typeof job.relatedToJobId === 'object' ? job.relatedToJobId.jobNo : undefined;
-    
-    // Format job types with (Cover) for Outer
-    const formattedJobTypes = job.jobTypes.map(type => 
-      type === JobType.OUTER ? `${type} (Cover)` : type
-    );
+  const handleExportPDF = async (job: Job) => {
+    try {
+      const clientName = typeof job.clientId === 'object' ? job.clientId.clientName : '';
+      const paperName = typeof job.paperId === 'object' ? job.paperId.paperName : '';
+      const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '';
+      const relatedToJobNo = typeof job.relatedToJobId === 'object' ? job.relatedToJobId.jobNo : undefined;
+      
+      // Format job types with (Cover) for Outer
+      const formattedJobTypes = job.jobTypes.map(type => 
+        type === JobType.OUTER ? `${type} (Cover)` : type
+      );
 
-    generateJobPDF({
-      jobNo: job.jobNo,
-      jobName: job.jobName,
-      clientName,
-      jobDate: formatBSDate(job.jobDate),
-      deliveryDate: formatBSDate(job.deliveryDate),
-      jobTypes: formattedJobTypes,
-      quantity: job.quantity,
-      paperName,
-      paperSize: job.paperSize,
-      totalBWPages: job.totalBWPages,
-      totalColorPages: job.totalColorPages,
-      totalPages: job.totalPages,
-      pageColor: job.pageColor,
-      pageColorOther: job.pageColorOther,
-      bookSize: job.bookSize,
-      bookSizeOther: job.bookSizeOther,
-      totalPlate: job.totalPlate,
-      totalPlateOther: job.totalPlateOther,
-      totalFarma: job.totalFarma,
-      totalFarmaOther: job.totalFarmaOther,
-      plateBy: job.plateBy,
-      plateFrom: job.plateFrom,
-      plateSize: job.plateSize,
-      plateSizeOther: job.plateSizeOther,
-      machineName,
-      laminationThermal: job.laminationThermal,
-      normal: job.normal,
-      folding: job.folding,
-      binding: job.binding,
-      stitch: job.stitch,
-      additional: job.additional,
-      relatedToJobNo,
-      remarks: job.remarks,
-      specialInstructions: job.specialInstructions,
-    });
-    toast.success('PDF exported successfully');
+      await generateJobPDF({
+        jobNo: job.jobNo,
+        jobName: job.jobName,
+        clientName,
+        jobDate: formatBSDate(job.jobDate),
+        deliveryDate: formatBSDate(job.deliveryDate),
+        jobTypes: formattedJobTypes,
+        quantity: job.quantity,
+        paperName,
+        paperSize: job.paperSize,
+        totalBWPages: job.totalBWPages,
+        totalColorPages: job.totalColorPages,
+        totalPages: job.totalPages,
+        pageColor: job.pageColor,
+        pageColorOther: job.pageColorOther,
+        bookSize: job.bookSize,
+        bookSizeOther: job.bookSizeOther,
+        totalPlate: job.totalPlate,
+        totalPlateOther: job.totalPlateOther,
+        totalFarma: job.totalFarma,
+        totalFarmaOther: job.totalFarmaOther,
+        plateBy: job.plateBy,
+        plateFrom: job.plateFrom,
+        plateSize: job.plateSize,
+        plateSizeOther: job.plateSizeOther,
+        machineName,
+        laminationThermal: job.laminationThermal,
+        normal: job.normal,
+        folding: job.folding,
+        binding: job.binding,
+        stitch: job.stitch,
+        additional: job.additional,
+        relatedToJobNo,
+        remarks: job.remarks,
+        specialInstructions: job.specialInstructions,
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleDelete = async (jobId: string, jobNo: string) => {

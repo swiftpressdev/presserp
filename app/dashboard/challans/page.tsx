@@ -59,16 +59,21 @@ export default function ChallansPage() {
     router.push(`/dashboard/challans/${challan._id}`);
   };
 
-  const handleExportPDF = (challan: Challan) => {
-    generateChallanPDF({
-      challanNumber: challan.challanNumber,
-      challanDate: formatBSDate(challan.challanDate),
-      destination: challan.destination,
-      estimateReferenceNo: challan.estimateReferenceNo,
-      particulars: challan.particulars,
-      totalUnits: challan.totalUnits,
-    });
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (challan: Challan) => {
+    try {
+      await generateChallanPDF({
+        challanNumber: challan.challanNumber,
+        challanDate: formatBSDate(challan.challanDate),
+        destination: challan.destination,
+        estimateReferenceNo: challan.estimateReferenceNo,
+        particulars: challan.particulars,
+        totalUnits: challan.totalUnits,
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleDelete = async (challanId: string, challanNumber: string) => {
