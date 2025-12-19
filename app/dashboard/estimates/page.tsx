@@ -20,6 +20,7 @@ interface Estimate {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  finishSize?: string;
   particulars: any[];
   total: number;
   hasDiscount?: boolean;
@@ -102,6 +103,7 @@ export default function EstimatesPage() {
         totalColorPages: estimate.totalColorPages,
         totalPages: estimate.totalPages,
         paperSize: estimate.paperSize,
+        finishSize: estimate.finishSize,
         particulars: estimate.particulars,
         total: estimate.total,
         hasDiscount: estimate.hasDiscount,

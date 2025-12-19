@@ -21,6 +21,8 @@ interface Job {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  bookSize?: string;
+  bookSizeOther?: string;
 }
 
 export default function EditEstimatePage() {
@@ -46,6 +48,7 @@ export default function EditEstimatePage() {
     totalColorPages: 0,
     totalPages: 0,
     paperSize: '',
+    finishSize: '',
   });
 
   const [particulars, setParticulars] = useState<Particular[]>([
@@ -84,11 +87,16 @@ export default function EditEstimatePage() {
       if (formData.jobId) {
         const selectedJob = allJobs.find((job) => job._id === formData.jobId);
         if (selectedJob) {
+          const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+            ? selectedJob.bookSizeOther 
+            : selectedJob.bookSize || '';
+          
           setJobDetails({
             totalBWPages: selectedJob.totalBWPages,
             totalColorPages: selectedJob.totalColorPages,
             totalPages: selectedJob.totalPages,
             paperSize: selectedJob.paperSize,
+            finishSize,
           });
         }
       }
@@ -152,6 +160,7 @@ export default function EditEstimatePage() {
         totalColorPages: estimate.totalColorPages || 0,
         totalPages: estimate.totalPages || 0,
         paperSize: estimate.paperSize || '',
+        finishSize: estimate.finishSize || '',
       });
 
       // Convert particulars to match Particular interface
@@ -179,7 +188,7 @@ export default function EditEstimatePage() {
 
   const handleClientChange = (clientId: string) => {
     setFormData({ ...formData, clientId, jobId: '' });
-    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '' });
+    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
 
     const filtered = allJobs.filter((job) => {
       const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
@@ -193,11 +202,16 @@ export default function EditEstimatePage() {
 
     const selectedJob = allJobs.find((job) => job._id === jobId);
     if (selectedJob) {
+      const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+        ? selectedJob.bookSizeOther 
+        : selectedJob.bookSize || '';
+      
       setJobDetails({
         totalBWPages: selectedJob.totalBWPages,
         totalColorPages: selectedJob.totalColorPages,
         totalPages: selectedJob.totalPages,
         paperSize: selectedJob.paperSize,
+        finishSize,
       });
     }
   };
@@ -238,6 +252,7 @@ export default function EditEstimatePage() {
           vatType,
           hasDiscount,
           discountPercentage: hasDiscount ? discountPercentage : 0,
+          finishSize: jobDetails.finishSize,
         }),
       });
 
@@ -380,6 +395,16 @@ export default function EditEstimatePage() {
                 type="text"
                 disabled
                 value={jobDetails.totalPages}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Finish Size</label>
+              <input
+                type="text"
+                disabled
+                value={jobDetails.finishSize}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
               />
             </div>

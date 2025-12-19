@@ -491,7 +491,7 @@ export default function EditJobPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Book Size</label>
+              <label className="block text-sm font-medium text-gray-700">Finish Size</label>
               <select
                 value={formData.bookSize}
                 onChange={(e) => setFormData({ ...formData, bookSize: e.target.value as BookSizeType | '', bookSizeOther: '' })}
@@ -509,7 +509,7 @@ export default function EditJobPage() {
             {formData.bookSize === BookSizeType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Book Size <span className="text-red-500">*</span>
+                  Specify Finish Size <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

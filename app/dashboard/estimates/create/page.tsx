@@ -22,6 +22,8 @@ interface Job {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  bookSize?: string;
+  bookSizeOther?: string;
 }
 
 export default function CreateEstimatePage() {
@@ -44,6 +46,7 @@ export default function CreateEstimatePage() {
     totalColorPages: 0,
     totalPages: 0,
     paperSize: '',
+    finishSize: '',
   });
 
   const [particulars, setParticulars] = useState<Particular[]>([
@@ -95,7 +98,7 @@ export default function CreateEstimatePage() {
 
   const handleClientChange = (clientId: string) => {
     setFormData({ ...formData, clientId, jobId: '' });
-    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '' });
+    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
 
     const filtered = allJobs.filter((job) => {
       // Handle both populated object and string ID
@@ -110,11 +113,16 @@ export default function CreateEstimatePage() {
 
     const selectedJob = allJobs.find((job) => job._id === jobId);
     if (selectedJob) {
+      const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+        ? selectedJob.bookSizeOther 
+        : selectedJob.bookSize || '';
+      
       setJobDetails({
         totalBWPages: selectedJob.totalBWPages,
         totalColorPages: selectedJob.totalColorPages,
         totalPages: selectedJob.totalPages,
         paperSize: selectedJob.paperSize,
+        finishSize,
       });
     }
   };
@@ -155,6 +163,7 @@ export default function CreateEstimatePage() {
           vatType,
           hasDiscount,
           discountPercentage: hasDiscount ? discountPercentage : 0,
+          finishSize: jobDetails.finishSize,
         }),
       });
 
@@ -287,6 +296,16 @@ export default function CreateEstimatePage() {
                 type="text"
                 disabled
                 value={jobDetails.totalPages}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Finish Size</label>
+              <input
+                type="text"
+                disabled
+                value={jobDetails.finishSize}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
               />
             </div>

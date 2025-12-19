@@ -24,6 +24,7 @@ const estimateSchema = z.object({
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
   vatType: z.enum(['excluded', 'included', 'none']),
   remarks: z.string().optional(),
+  finishSize: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -101,6 +102,9 @@ export async function POST(request: NextRequest) {
     });
     const amountInWords = toWords.convert(grandTotal);
 
+    // Get finishSize from job if not provided in request
+    const finishSize = validatedData.finishSize || (job.bookSize === 'Other' && job.bookSizeOther ? job.bookSizeOther : job.bookSize || '');
+
     const estimate = await Estimate.create({
       ...validatedData,
       estimateNumber,
@@ -108,6 +112,7 @@ export async function POST(request: NextRequest) {
       totalColorPages: job.totalColorPages,
       totalPages: job.totalPages,
       paperSize: job.paperSize,
+      finishSize: finishSize || undefined,
       adminId,
       createdBy: user.email,
       total,

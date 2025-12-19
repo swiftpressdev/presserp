@@ -252,6 +252,7 @@ interface EstimateData {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  finishSize?: string;
   particulars: Particular[];
   total: number;
   hasDiscount?: boolean;
@@ -305,6 +306,12 @@ export async function generateEstimatePDF(data: EstimateData) {
     20,
     70 + letterheadOffset
   );
+  
+  let nextY = 77 + letterheadOffset;
+  if (data.finishSize) {
+    doc.text(`Finish Size: ${data.finishSize}`, 20, nextY);
+    nextY += 7;
+  }
 
   const tableData = data.particulars.map((item) => [
     item.sn,
@@ -315,7 +322,7 @@ export async function generateEstimatePDF(data: EstimateData) {
   ]);
 
   autoTable(doc, {
-    startY: 78 + letterheadOffset,
+    startY: nextY,
     head: [['SN', 'Particulars', 'Quantity', 'Rate', 'Amount']],
     body: tableData,
     theme: 'grid',
@@ -486,7 +493,7 @@ export async function generateJobPDF(data: JobData) {
   
   if (data.bookSize) {
     const bookSizeValue = data.bookSize === 'Other' && data.bookSizeOther ? data.bookSizeOther : data.bookSize;
-    doc.text(`Book Size: ${bookSizeValue}`, 20, yPos);
+    doc.text(`Finish Size: ${bookSizeValue}`, 20, yPos);
     yPos += 7;
   }
   

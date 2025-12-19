@@ -19,6 +19,7 @@ export interface IEstimate extends Document {
   estimateNumber: string;
   estimateDate: string;
   paperSize: string;
+  finishSize?: string;
   particulars: IParticular[];
   total: number;
   hasDiscount: boolean;
@@ -100,6 +101,10 @@ const EstimateSchema = new Schema<IEstimate>(
     paperSize: {
       type: String,
       required: true,
+      trim: true,
+    },
+    finishSize: {
+      type: String,
       trim: true,
     },
     particulars: {
