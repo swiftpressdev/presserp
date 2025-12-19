@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Estimate from '@/models/Estimate';
 import Job from '@/models/Job';
+import Client from '@/models/Client';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 import { ToWords } from 'to-words';
@@ -14,11 +15,22 @@ const particularSchema = z.object({
   amount: z.coerce.number().min(0, 'Amount must be positive'),
 });
 
+const deliveryNoteSchema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  challanNo: z.string().min(1, 'Challan number is required'),
+  quantity: z.coerce.number().min(0, 'Quantity must be at least 0'),
+  remarks: z.string().optional(),
+});
+
 const updateEstimateSchema = z.object({
   clientId: z.string().min(1, 'Client is required'),
-  jobId: z.string().min(1, 'Job is required'),
+  jobId: z.union([
+    z.string().min(1, 'Job is required'),
+    z.array(z.string().min(1)).min(1, 'At least one job is required'),
+  ]),
   estimateDate: z.string().min(1, 'Estimate date is required'),
   particulars: z.array(particularSchema).min(1, 'At least one particular is required'),
+  deliveryNotes: z.array(deliveryNoteSchema).optional(),
   hasDiscount: z.boolean().optional(),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
   vatType: z.enum(['excluded', 'included', 'none']),
@@ -32,6 +44,12 @@ export async function GET(
 ) {
   try {
     await dbConnect();
+    // Ensure Client model is registered before using populate
+    const mongoose = await import('mongoose');
+    if (!mongoose.default.models.Client) {
+      await import('@/models/Client');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;
@@ -73,11 +91,26 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateEstimateSchema.parse(body);
 
-    // Get job details if jobId is provided
-    const job = await Job.findOne({ _id: validatedData.jobId, adminId });
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    // Normalize jobId to array
+    const jobIds = Array.isArray(validatedData.jobId) ? validatedData.jobId : [validatedData.jobId];
+
+    // Fetch all jobs
+    const jobs = await Job.find({ _id: { $in: jobIds }, adminId });
+    if (jobs.length !== jobIds.length) {
+      return NextResponse.json({ error: 'One or more jobs not found' }, { status: 404 });
     }
+
+    // Sum up pages from all jobs
+    const totalBWPages = jobs.reduce((sum, job) => sum + (job.totalBWPages || 0), 0);
+    const totalColorPages = jobs.reduce((sum, job) => sum + (job.totalColorPages || 0), 0);
+    const totalPages = jobs.reduce((sum, job) => sum + (job.totalPages || 0), 0);
+
+    // Get paperSize from first job (assuming all jobs have same paper size)
+    const paperSize = jobs[0]?.paperSize || '';
+
+    // Get finishSize from first job if not provided in request
+    const firstJob = jobs[0];
+    const finishSize = validatedData.finishSize || (firstJob?.bookSize === 'Other' && firstJob?.bookSizeOther ? firstJob.bookSizeOther : firstJob?.bookSize || '');
 
     // Calculate totals
     const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
@@ -118,17 +151,15 @@ export async function PUT(
     });
     const amountInWords = toWords.convert(grandTotal);
 
-    // Get finishSize from request or job if not provided
-    const finishSize = validatedData.finishSize || (job.bookSize === 'Other' && job.bookSizeOther ? job.bookSizeOther : job.bookSize || '');
-
     const estimate = await Estimate.findOneAndUpdate(
       { _id: id, adminId },
       {
         ...validatedData,
-        totalBWPages: job.totalBWPages,
-        totalColorPages: job.totalColorPages,
-        totalPages: job.totalPages,
-        paperSize: job.paperSize,
+        jobId: jobIds,
+        totalBWPages,
+        totalColorPages,
+        totalPages,
+        paperSize,
         finishSize: finishSize || undefined,
         total,
         hasDiscount: validatedData.hasDiscount || false,
@@ -139,6 +170,7 @@ export async function PUT(
         vatAmount: validatedData.vatType !== 'none' ? vatAmount : undefined,
         grandTotal,
         amountInWords,
+        deliveryNotes: validatedData.deliveryNotes || [],
       },
       { new: true }
     ).populate('clientId', 'clientName')

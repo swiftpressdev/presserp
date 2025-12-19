@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Job from '@/models/Job';
+import Client from '@/models/Client';
+import Paper from '@/models/Paper';
+import Equipment from '@/models/Equipment';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import {
   JobType,

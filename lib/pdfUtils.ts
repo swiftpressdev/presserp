@@ -243,11 +243,18 @@ export async function generateQuotationPDF(data: QuotationData) {
   doc.save(`Quotation-${data.quotationSN}.pdf`);
 }
 
+interface DeliveryNote {
+  date: string;
+  challanNo: string;
+  quantity: number;
+  remarks?: string;
+}
+
 interface EstimateData {
   estimateNumber: string;
   estimateDate: string;
   clientName: string;
-  jobNumber: string;
+  jobNumber: string | string[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -264,6 +271,7 @@ interface EstimateData {
   grandTotal: number;
   amountInWords?: string;
   remarks?: string;
+  deliveryNotes?: DeliveryNote[];
 }
 
 export async function generateEstimatePDF(data: EstimateData) {
@@ -299,7 +307,8 @@ export async function generateEstimatePDF(data: EstimateData) {
   doc.text(data.estimateDate, dateX, 42 + letterheadOffset);
 
   doc.text(`Client: ${data.clientName}`, 20, 49 + letterheadOffset);
-  doc.text(`Job No: ${data.jobNumber}`, 20, 56 + letterheadOffset);
+  const jobNumbers = Array.isArray(data.jobNumber) ? data.jobNumber.join(', ') : data.jobNumber;
+  doc.text(`Job ${Array.isArray(data.jobNumber) && data.jobNumber.length > 1 ? 'Nos' : 'No'}: ${jobNumbers}`, 20, 56 + letterheadOffset);
   doc.text(`Paper Size: ${data.paperSize}`, 20, 63 + letterheadOffset);
   doc.text(
     `Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`,
@@ -401,6 +410,47 @@ export async function generateEstimatePDF(data: EstimateData) {
     const remarksLines = doc.splitTextToSize(data.remarks, 180);
     doc.text(remarksLines, 20, currentY);
     currentY += remarksLines.length * 5;
+  }
+
+  // Add Delivery Notes if present
+  if (data.deliveryNotes && data.deliveryNotes.length > 0) {
+    currentY += 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Delivery Notes', 20, currentY);
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    const deliveryNotesTableData = data.deliveryNotes.map((note) => [
+      formatBSDate(note.date),
+      note.challanNo,
+      note.quantity.toFixed(2),
+      note.remarks || '-',
+    ]);
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Date (BS)', 'Challan No', 'Quantity', 'Remarks']],
+      body: deliveryNotesTableData,
+      theme: 'grid',
+      margin: { left: 20, right: 20 },
+      headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      styles: { lineWidth: 0.2, lineColor: [0, 0, 0], fontSize: 9 },
+      tableLineWidth: 0.2,
+      tableLineColor: [0, 0, 0],
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // Add total quantity
+    const totalQuantity = data.deliveryNotes.reduce((sum, note) => sum + note.quantity, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Quantity: ${totalQuantity.toFixed(2)}`, 20, currentY);
+    doc.setFont('helvetica', 'normal');
+    currentY += 7;
   }
 
   // Add company assets (logo, stamp, signature)
@@ -585,7 +635,6 @@ interface ChallanData {
   challanNumber: string;
   challanDate: string;
   destination: string;
-  estimateReferenceNo: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -613,8 +662,6 @@ export async function generateChallanPDF(data: ChallanData) {
   doc.text(`Date: ${data.challanDate}`, 20, yPos);
   yPos += 7;
   doc.text(`Destination: ${data.destination}`, 20, yPos);
-  yPos += 7;
-  doc.text(`Estimate Reference No: ${data.estimateReferenceNo}`, 20, yPos);
   yPos += 10;
 
   const tableData = data.particulars.map((p) => [

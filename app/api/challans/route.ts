@@ -14,7 +14,6 @@ const challanParticularSchema = z.object({
 const challanSchema = z.object({
   challanDate: z.string().min(1, 'Challan date is required'),
   destination: z.string().min(1, 'Destination is required'),
-  estimateReferenceNo: z.string().min(1, 'Estimate reference number is required'),
   particulars: z.array(challanParticularSchema).min(1, 'At least one particular is required'),
 });
 
@@ -56,7 +55,6 @@ export async function POST(request: NextRequest) {
       challanNumber,
       challanDate: validatedData.challanDate,
       destination: validatedData.destination,
-      estimateReferenceNo: validatedData.estimateReferenceNo,
       particulars: validatedData.particulars,
       totalUnits,
       createdBy: user.email || user.id,

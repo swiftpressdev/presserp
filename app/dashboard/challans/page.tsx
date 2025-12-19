@@ -15,7 +15,6 @@ interface Challan {
   challanNumber: string;
   challanDate: string;
   destination: string;
-  estimateReferenceNo: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -65,7 +64,6 @@ export default function ChallansPage() {
         challanNumber: challan.challanNumber,
         challanDate: formatBSDate(challan.challanDate),
         destination: challan.destination,
-        estimateReferenceNo: challan.estimateReferenceNo,
         particulars: challan.particulars,
         totalUnits: challan.totalUnits,
       });
@@ -141,9 +139,6 @@ export default function ChallansPage() {
                     Destination
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estimate Reference
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total Units
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -162,9 +157,6 @@ export default function ChallansPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {challan.destination}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.estimateReferenceNo}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {challan.totalUnits.toFixed(2)}

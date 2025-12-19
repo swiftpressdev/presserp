@@ -5,6 +5,13 @@ import User from '@/models/User';
 import { requireAdmin, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 
+const defaultParticularSchema = z.object({
+  particularName: z.string(),
+  unit: z.string(),
+  quantity: z.coerce.number().min(0, 'Quantity must be at least 0'),
+  rate: z.coerce.number().min(0, 'Rate must be at least 0'),
+});
+
 const settingsSchema = z.object({
   quotationPrefix: z.string().min(1, 'Quotation prefix is required'),
   jobPrefix: z.string().min(1, 'Job prefix is required'),
@@ -27,6 +34,7 @@ const settingsSchema = z.object({
   companyStampUseIn: z.array(z.string()).optional(),
   letterheadUseIn: z.array(z.string()).optional(),
   esignatureUseIn: z.array(z.string()).optional(),
+  defaultParticulars: z.array(defaultParticularSchema).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -44,6 +52,7 @@ export async function GET(request: NextRequest) {
         jobPrefix: 'J',
         estimatePrefix: 'E',
         challanPrefix: 'C',
+        defaultParticulars: [],
       });
     }
 
@@ -67,6 +76,14 @@ export async function PUT(request: NextRequest) {
     const adminId = getAdminId(admin);
 
     const body = await request.json();
+    
+    // Filter out empty default particulars before validation
+    if (body.defaultParticulars && Array.isArray(body.defaultParticulars)) {
+      body.defaultParticulars = body.defaultParticulars.filter(
+        (dp: any) => dp.particularName && dp.particularName.trim() !== ''
+      );
+    }
+    
     const validatedData = settingsSchema.parse(body);
 
     const settings = await Settings.findOneAndUpdate(

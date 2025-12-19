@@ -12,7 +12,7 @@ export interface IChallan extends Document {
   challanNumber: string;
   challanDate: string;
   destination: string;
-  estimateReferenceNo: string;
+  estimateReferenceNo?: string;
   particulars: IChallanParticular[];
   totalUnits: number;
   createdBy: string;
@@ -59,7 +59,7 @@ const ChallanSchema = new Schema<IChallan>(
     },
     estimateReferenceNo: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     particulars: {

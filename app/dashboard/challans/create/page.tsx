@@ -15,55 +15,16 @@ export default function CreateChallanPage() {
   const [formData, setFormData] = useState({
     challanDate: getCurrentBSDate(),
     destination: '',
-    estimateReferenceNo: '',
   });
   const [particulars, setParticulars] = useState<ChallanParticular[]>([
     { sn: 1, particulars: '', quantity: 0 },
   ]);
-  const [loadingParticulars, setLoadingParticulars] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
-
-  const handleGetParticulars = async () => {
-    if (!formData.estimateReferenceNo.trim()) {
-      toast.error('Please enter an estimate reference number');
-      return;
-    }
-
-    setLoadingParticulars(true);
-    try {
-      const response = await fetch('/api/estimates/by-number', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          estimateNumber: formData.estimateReferenceNo,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch estimate particulars');
-      }
-
-      if (data.estimate && data.estimate.particulars) {
-        setParticulars(data.estimate.particulars);
-        toast.success('Particulars loaded successfully');
-      } else {
-        toast.error('No particulars found for this estimate');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch estimate particulars');
-    } finally {
-      setLoadingParticulars(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,30 +115,6 @@ export default function CreateChallanPage() {
                 onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Estimate Reference No <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  required
-                  value={formData.estimateReferenceNo}
-                  onChange={(e) => setFormData({ ...formData, estimateReferenceNo: e.target.value })}
-                  className="mt-1 flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter estimate number"
-                />
-                <button
-                  type="button"
-                  onClick={handleGetParticulars}
-                  disabled={loadingParticulars}
-                  className="mt-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {loadingParticulars ? 'Loading...' : 'Get Particulars Detail'}
-                </button>
-              </div>
             </div>
           </div>
 

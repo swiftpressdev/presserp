@@ -14,7 +14,6 @@ interface Challan {
   challanNumber: string;
   challanDate: string;
   destination: string;
-  estimateReferenceNo: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -135,13 +134,6 @@ export default function ViewChallanPage() {
               <label className="block text-sm font-medium text-gray-700">Destination</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
                 {challan.destination}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Estimate Reference No</label>
-              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {challan.estimateReferenceNo}
               </div>
             </div>
           </div>
