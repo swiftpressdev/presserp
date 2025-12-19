@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ToWords } from 'to-words';
 
 export interface Particular {
   sn: number;
@@ -13,15 +14,23 @@ export interface Particular {
 interface ParticularsTableProps {
   particulars: Particular[];
   onChange: (particulars: Particular[]) => void;
-  hasVAT: boolean;
-  onVATChange: (hasVAT: boolean) => void;
+  vatType: 'excluded' | 'included' | 'none';
+  onVATTypeChange: (vatType: 'excluded' | 'included' | 'none') => void;
+  hasDiscount?: boolean;
+  onDiscountChange?: (hasDiscount: boolean) => void;
+  discountPercentage?: number;
+  onDiscountPercentageChange?: (percentage: number) => void;
 }
 
 export default function ParticularsTable({
   particulars,
   onChange,
-  hasVAT,
-  onVATChange,
+  vatType,
+  onVATTypeChange,
+  hasDiscount = false,
+  onDiscountChange,
+  discountPercentage = 0,
+  onDiscountPercentageChange,
 }: ParticularsTableProps) {
   const addRow = () => {
     const newParticular: Particular = {
@@ -60,15 +69,62 @@ export default function ParticularsTable({
 
   const total = particulars.reduce((sum, item) => sum + item.amount, 0);
   
-  let subtotal = 0;
-  let vatAmount = 0;
-  let grandTotal = total;
-
-  if (hasVAT) {
-    subtotal = Number((total / 1.13).toFixed(2));
-    vatAmount = Number((subtotal * 0.13).toFixed(2));
-    grandTotal = Number((subtotal + vatAmount).toFixed(2));
+  let basePrice = total;
+  let extractedVAT = 0;
+  
+  // If VAT is included in the price, extract it first
+  if (vatType === 'included') {
+    // Reverse the VAT calculation: base = total / 1.13
+    basePrice = Number((total / 1.13).toFixed(2));
+    extractedVAT = Number((total - basePrice).toFixed(2));
   }
+  
+  // Step 1: Calculate discount on base price (if enabled)
+  let discountAmount = 0;
+  let priceAfterDiscount = basePrice;
+  
+  if (hasDiscount && discountPercentage > 0) {
+    discountAmount = Number(((basePrice * discountPercentage) / 100).toFixed(2));
+    priceAfterDiscount = Number((basePrice - discountAmount).toFixed(2));
+  }
+  
+  // Step 2: Calculate VAT based on type
+  let vatAmount = 0;
+  let grandTotal = priceAfterDiscount;
+  
+  if (vatType === 'excluded') {
+    // Add VAT on top of the discounted price
+    vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+    grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
+  } else if (vatType === 'included') {
+    // VAT was already extracted, recalculate on discounted price
+    vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+    grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
+  }
+
+  // Calculate amount in words
+  const [amountInWords, setAmountInWords] = useState('');
+  
+  useEffect(() => {
+    if (grandTotal > 0) {
+      try {
+        const toWords = new ToWords({
+          localeCode: 'en-IN',
+          converterOptions: {
+            currency: true,
+            ignoreDecimal: false,
+            ignoreZeroCurrency: false,
+          },
+        });
+        setAmountInWords(toWords.convert(grandTotal));
+      } catch (error) {
+        console.error('Error converting amount to words:', error);
+        setAmountInWords('');
+      }
+    } else {
+      setAmountInWords('');
+    }
+  }, [grandTotal]);
 
   return (
     <div className="space-y-4">
@@ -151,47 +207,134 @@ export default function ParticularsTable({
           <span className="text-lg font-semibold">{total.toFixed(2)}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Discount Section */}
+        {onDiscountChange && onDiscountPercentageChange && (
+          <>
+            <div className="flex items-center gap-4 border-t pt-3">
+              <label className="font-medium">Apply Discount:</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="discount"
+                    checked={hasDiscount}
+                    onChange={() => onDiscountChange(true)}
+                  />
+                  <span>Yes</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="discount"
+                    checked={!hasDiscount}
+                    onChange={() => onDiscountChange(false)}
+                  />
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
+
+            {hasDiscount && (
+              <div className="flex items-center gap-4">
+                <label className="font-medium">Discount %:</label>
+                <input
+                  type="number"
+                  value={discountPercentage === 0 ? '' : discountPercentage}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value);
+                    onDiscountPercentageChange(Math.max(0, Math.min(100, value)));
+                  }}
+                  className="w-24 px-3 py-1 border border-gray-300 rounded-md"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0"
+                />
+              </div>
+            )}
+
+            {hasDiscount && discountPercentage > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Discount ({discountPercentage}%):</span>
+                  <span className="text-red-600">-{discountAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Price After Discount:</span>
+                  <span>{priceAfterDiscount.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* VAT Section */}
+        <div className="flex items-center gap-4 border-t pt-3">
           <label className="font-medium">VAT (13%):</label>
           <div className="flex gap-4">
             <label className="flex items-center gap-2">
               <input
                 type="radio"
                 name="vat"
-                checked={hasVAT}
-                onChange={() => onVATChange(true)}
+                checked={vatType === 'excluded'}
+                onChange={() => onVATTypeChange('excluded')}
               />
-              <span>Yes</span>
+              <span>Excluded</span>
             </label>
             <label className="flex items-center gap-2">
               <input
                 type="radio"
                 name="vat"
-                checked={!hasVAT}
-                onChange={() => onVATChange(false)}
+                checked={vatType === 'included'}
+                onChange={() => onVATTypeChange('included')}
               />
-              <span>No</span>
+              <span>Included</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="vat"
+                checked={vatType === 'none'}
+                onChange={() => onVATTypeChange('none')}
+              />
+              <span>None</span>
             </label>
           </div>
         </div>
 
-        {hasVAT && (
+        {vatType === 'included' && (
           <>
-            <div className="flex items-center justify-between border-t pt-3">
-              <span className="font-medium">Subtotal:</span>
-              <span>{subtotal.toFixed(2)}</span>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Base Price (VAT extracted):</span>
+              <span>{basePrice.toFixed(2)}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium">VAT (13%):</span>
-              <span>{vatAmount.toFixed(2)}</span>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Extracted VAT (13%):</span>
+              <span>{extractedVAT.toFixed(2)}</span>
             </div>
           </>
+        )}
+
+        {vatType !== 'none' && (
+          <div className="flex items-center justify-between">
+            <span className="font-medium">VAT (13%):</span>
+            <span>{vatAmount.toFixed(2)}</span>
+          </div>
         )}
 
         <div className="flex items-center justify-between border-t pt-3">
           <span className="font-bold text-lg">Grand Total:</span>
           <span className="text-xl font-bold text-blue-600">{grandTotal.toFixed(2)}</span>
         </div>
+
+        {amountInWords && (
+          <div className="border-t pt-3">
+            <div className="flex flex-col">
+              <span className="font-medium text-sm text-gray-700 mb-1">Amount in Words:</span>
+              <span className="text-sm text-gray-900 italic">{amountInWords}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

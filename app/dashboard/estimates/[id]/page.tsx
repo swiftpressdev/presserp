@@ -21,6 +21,8 @@ interface Job {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  bookSize?: string;
+  bookSizeOther?: string;
 }
 
 export default function EditEstimatePage() {
@@ -38,6 +40,7 @@ export default function EditEstimatePage() {
     clientId: '',
     jobId: '',
     estimateDate: '',
+    remarks: '',
   });
 
   const [jobDetails, setJobDetails] = useState({
@@ -45,12 +48,15 @@ export default function EditEstimatePage() {
     totalColorPages: 0,
     totalPages: 0,
     paperSize: '',
+    finishSize: '',
   });
 
   const [particulars, setParticulars] = useState<Particular[]>([
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
-  const [hasVAT, setHasVAT] = useState(false);
+  const [vatType, setVatType] = useState<'excluded' | 'included' | 'none'>('none');
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -81,11 +87,16 @@ export default function EditEstimatePage() {
       if (formData.jobId) {
         const selectedJob = allJobs.find((job) => job._id === formData.jobId);
         if (selectedJob) {
+          const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+            ? selectedJob.bookSizeOther 
+            : selectedJob.bookSize || '';
+          
           setJobDetails({
             totalBWPages: selectedJob.totalBWPages,
             totalColorPages: selectedJob.totalColorPages,
             totalPages: selectedJob.totalPages,
             paperSize: selectedJob.paperSize,
+            finishSize,
           });
         }
       }
@@ -140,6 +151,7 @@ export default function EditEstimatePage() {
         clientId,
         jobId,
         estimateDate: estimate.estimateDate || '',
+        remarks: estimate.remarks || '',
       });
 
       // Set job details from estimate (will be updated by useEffect if job found in jobs list)
@@ -148,6 +160,7 @@ export default function EditEstimatePage() {
         totalColorPages: estimate.totalColorPages || 0,
         totalPages: estimate.totalPages || 0,
         paperSize: estimate.paperSize || '',
+        finishSize: estimate.finishSize || '',
       });
 
       // Convert particulars to match Particular interface
@@ -162,7 +175,9 @@ export default function EditEstimatePage() {
       setParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
       ]);
-      setHasVAT(estimate.hasVAT || false);
+      setVatType(estimate.vatType || 'none');
+      setHasDiscount(estimate.hasDiscount || false);
+      setDiscountPercentage(estimate.discountPercentage || 0);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch estimate');
       router.push('/dashboard/estimates');
@@ -173,7 +188,7 @@ export default function EditEstimatePage() {
 
   const handleClientChange = (clientId: string) => {
     setFormData({ ...formData, clientId, jobId: '' });
-    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '' });
+    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
 
     const filtered = allJobs.filter((job) => {
       const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
@@ -187,11 +202,16 @@ export default function EditEstimatePage() {
 
     const selectedJob = allJobs.find((job) => job._id === jobId);
     if (selectedJob) {
+      const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+        ? selectedJob.bookSizeOther 
+        : selectedJob.bookSize || '';
+      
       setJobDetails({
         totalBWPages: selectedJob.totalBWPages,
         totalColorPages: selectedJob.totalColorPages,
         totalPages: selectedJob.totalPages,
         paperSize: selectedJob.paperSize,
+        finishSize,
       });
     }
   };
@@ -229,7 +249,10 @@ export default function EditEstimatePage() {
         body: JSON.stringify({
           ...formData,
           particulars: indexedParticulars,
-          hasVAT,
+          vatType,
+          hasDiscount,
+          discountPercentage: hasDiscount ? discountPercentage : 0,
+          finishSize: jobDetails.finishSize,
         }),
       });
 
@@ -375,6 +398,16 @@ export default function EditEstimatePage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Finish Size</label>
+              <input
+                type="text"
+                disabled
+                value={jobDetails.finishSize}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+              />
+            </div>
           </div>
 
           <div>
@@ -382,8 +415,25 @@ export default function EditEstimatePage() {
             <ParticularsTable
               particulars={particulars}
               onChange={setParticulars}
-              hasVAT={hasVAT}
-              onVATChange={setHasVAT}
+              vatType={vatType}
+              onVATTypeChange={setVatType}
+              hasDiscount={hasDiscount}
+              onDiscountChange={setHasDiscount}
+              discountPercentage={discountPercentage}
+              onDiscountPercentageChange={setDiscountPercentage}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Remarks
+            </label>
+            <textarea
+              value={formData.remarks}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter any additional remarks or notes..."
             />
           </div>
 

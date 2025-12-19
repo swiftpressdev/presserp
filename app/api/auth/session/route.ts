@@ -11,7 +11,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json(
         { authenticated: false },
-        { status: 401 }
+        { status: 200 }
       );
     }
 
@@ -27,11 +27,14 @@ export async function GET() {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('Session verification error:', error);
+  } catch (error: any) {
+    // Don't log expired token errors as errors - they're expected
+    if (error?.name !== 'TokenExpiredError') {
+      console.error('Session verification error:', error);
+    }
     return NextResponse.json(
       { authenticated: false },
-      { status: 401 }
+      { status: 200 }
     );
   }
 }

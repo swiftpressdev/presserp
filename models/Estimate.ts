@@ -19,12 +19,18 @@ export interface IEstimate extends Document {
   estimateNumber: string;
   estimateDate: string;
   paperSize: string;
+  finishSize?: string;
   particulars: IParticular[];
   total: number;
-  hasVAT: boolean;
-  subtotal?: number;
+  hasDiscount: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
+  remarks?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -97,6 +103,10 @@ const EstimateSchema = new Schema<IEstimate>(
       required: true,
       trim: true,
     },
+    finishSize: {
+      type: String,
+      trim: true,
+    },
     particulars: {
       type: [ParticularSchema],
       required: true,
@@ -105,12 +115,23 @@ const EstimateSchema = new Schema<IEstimate>(
       type: Number,
       required: true,
     },
-    hasVAT: {
+    hasDiscount: {
       type: Boolean,
       default: false,
     },
-    subtotal: {
+    discountPercentage: {
       type: Number,
+    },
+    discountAmount: {
+      type: Number,
+    },
+    priceAfterDiscount: {
+      type: Number,
+    },
+    vatType: {
+      type: String,
+      enum: ['excluded', 'included', 'none'],
+      default: 'none',
     },
     vatAmount: {
       type: Number,
@@ -118,6 +139,14 @@ const EstimateSchema = new Schema<IEstimate>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    amountInWords: {
+      type: String,
+      trim: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   baseSchemaOptions

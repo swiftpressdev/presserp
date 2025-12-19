@@ -22,6 +22,8 @@ interface Job {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  bookSize?: string;
+  bookSizeOther?: string;
 }
 
 export default function CreateEstimatePage() {
@@ -36,6 +38,7 @@ export default function CreateEstimatePage() {
     clientId: '',
     jobId: '',
     estimateDate: getCurrentBSDate(),
+    remarks: '',
   });
 
   const [jobDetails, setJobDetails] = useState({
@@ -43,12 +46,15 @@ export default function CreateEstimatePage() {
     totalColorPages: 0,
     totalPages: 0,
     paperSize: '',
+    finishSize: '',
   });
 
   const [particulars, setParticulars] = useState<Particular[]>([
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
-  const [hasVAT, setHasVAT] = useState(false);
+  const [vatType, setVatType] = useState<'excluded' | 'included' | 'none'>('none');
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -92,7 +98,7 @@ export default function CreateEstimatePage() {
 
   const handleClientChange = (clientId: string) => {
     setFormData({ ...formData, clientId, jobId: '' });
-    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '' });
+    setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
 
     const filtered = allJobs.filter((job) => {
       // Handle both populated object and string ID
@@ -107,11 +113,16 @@ export default function CreateEstimatePage() {
 
     const selectedJob = allJobs.find((job) => job._id === jobId);
     if (selectedJob) {
+      const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
+        ? selectedJob.bookSizeOther 
+        : selectedJob.bookSize || '';
+      
       setJobDetails({
         totalBWPages: selectedJob.totalBWPages,
         totalColorPages: selectedJob.totalColorPages,
         totalPages: selectedJob.totalPages,
         paperSize: selectedJob.paperSize,
+        finishSize,
       });
     }
   };
@@ -149,7 +160,10 @@ export default function CreateEstimatePage() {
         body: JSON.stringify({
           ...formData,
           particulars: indexedParticulars,
-          hasVAT,
+          vatType,
+          hasDiscount,
+          discountPercentage: hasDiscount ? discountPercentage : 0,
+          finishSize: jobDetails.finishSize,
         }),
       });
 
@@ -285,6 +299,16 @@ export default function CreateEstimatePage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Finish Size</label>
+              <input
+                type="text"
+                disabled
+                value={jobDetails.finishSize}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+              />
+            </div>
           </div>
 
           <div>
@@ -292,8 +316,25 @@ export default function CreateEstimatePage() {
             <ParticularsTable
               particulars={particulars}
               onChange={setParticulars}
-              hasVAT={hasVAT}
-              onVATChange={setHasVAT}
+              vatType={vatType}
+              onVATTypeChange={setVatType}
+              hasDiscount={hasDiscount}
+              onDiscountChange={setHasDiscount}
+              discountPercentage={discountPercentage}
+              onDiscountPercentageChange={setDiscountPercentage}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Remarks
+            </label>
+            <textarea
+              value={formData.remarks}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter any additional remarks or notes..."
             />
           </div>
 

@@ -17,10 +17,15 @@ export interface IQuotation extends Document {
   phoneNumber: string;
   particulars: IParticular[];
   total: number;
-  hasVAT: boolean;
-  subtotal?: number;
+  hasDiscount: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
+  remarks?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -85,12 +90,23 @@ const QuotationSchema = new Schema<IQuotation>(
       type: Number,
       required: true,
     },
-    hasVAT: {
+    hasDiscount: {
       type: Boolean,
       default: false,
     },
-    subtotal: {
+    discountPercentage: {
       type: Number,
+    },
+    discountAmount: {
+      type: Number,
+    },
+    priceAfterDiscount: {
+      type: Number,
+    },
+    vatType: {
+      type: String,
+      enum: ['excluded', 'included', 'none'],
+      default: 'none',
     },
     vatAmount: {
       type: Number,
@@ -98,6 +114,14 @@ const QuotationSchema = new Schema<IQuotation>(
     grandTotal: {
       type: Number,
       required: true,
+    },
+    amountInWords: {
+      type: String,
+      trim: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   baseSchemaOptions

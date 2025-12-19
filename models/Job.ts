@@ -32,10 +32,8 @@ export interface IJob extends Document {
   pageColorOther?: string;
   bookSize?: BookSizeType;
   bookSizeOther?: string;
-  totalPlate?: PlateFarmaType;
-  totalPlateOther?: string;
-  totalFarma?: PlateFarmaType;
-  totalFarmaOther?: string;
+  totalPlate?: string;
+  totalFarma?: string;
   plateBy: PlateBy;
   plateFrom?: string;
   plateSize?: PlateSizeType;
@@ -45,7 +43,9 @@ export interface IJob extends Document {
   normal?: NormalType;
   folding: boolean;
   binding?: BindingType;
+  bindingOther?: string;
   stitch?: StitchType;
+  stitchOther?: string;
   additional?: AdditionalService[];
   relatedToJobId?: Types.ObjectId | string;
   remarks?: string;
@@ -142,17 +142,9 @@ const JobSchema = new Schema<IJob>(
     },
     totalPlate: {
       type: String,
-      enum: Object.values(PlateFarmaType),
-    },
-    totalPlateOther: {
-      type: String,
       trim: true,
     },
     totalFarma: {
-      type: String,
-      enum: Object.values(PlateFarmaType),
-    },
-    totalFarmaOther: {
       type: String,
       trim: true,
     },
@@ -186,9 +178,17 @@ const JobSchema = new Schema<IJob>(
       type: String,
       enum: Object.values(BindingType),
     },
+    bindingOther: {
+      type: String,
+      trim: true,
+    },
     stitch: {
       type: String,
       enum: Object.values(StitchType),
+    },
+    stitchOther: {
+      type: String,
+      trim: true,
     },
     additional: {
       type: [String],

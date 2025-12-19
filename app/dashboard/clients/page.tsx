@@ -144,8 +144,14 @@ export default function ClientsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <Link
+                        href={`/dashboard/clients/view/${client._id}`}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        View
+                      </Link>
+                      <Link
                         href={`/dashboard/clients/${client._id}`}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-blue-600 hover:text-blue-900 ml-4"
                       >
                         Edit
                       </Link>

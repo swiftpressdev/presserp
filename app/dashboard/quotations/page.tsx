@@ -17,10 +17,15 @@ interface Quotation {
   phoneNumber: string;
   particulars: any[];
   total: number;
-  hasVAT: boolean;
-  subtotal?: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
+  remarks?: string;
 }
 
 export default function QuotationsPage() {
@@ -58,9 +63,14 @@ export default function QuotationsPage() {
     }
   };
 
-  const handleExportPDF = (quotation: Quotation) => {
-    generateQuotationPDF(quotation);
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (quotation: Quotation) => {
+    try {
+      await generateQuotationPDF(quotation);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleEdit = (quotation: Quotation) => {
@@ -157,6 +167,12 @@ export default function QuotationsPage() {
                       {quotation.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
+                      <Link
+                        href={`/dashboard/quotations/view/${quotation._id}`}
+                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+                      >
+                        View
+                      </Link>
                       <Link
                         href={`/dashboard/quotations/${quotation._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"

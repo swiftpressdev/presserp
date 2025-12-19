@@ -37,6 +37,7 @@ export enum LaminationType {
 export enum BindingType {
   PERFECT = 'Perfect',
   HARD = 'Hard',
+  OTHER = 'Other',
 }
 
 export enum StitchType {

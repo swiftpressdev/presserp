@@ -59,16 +59,21 @@ export default function ChallansPage() {
     router.push(`/dashboard/challans/${challan._id}`);
   };
 
-  const handleExportPDF = (challan: Challan) => {
-    generateChallanPDF({
-      challanNumber: challan.challanNumber,
-      challanDate: formatBSDate(challan.challanDate),
-      destination: challan.destination,
-      estimateReferenceNo: challan.estimateReferenceNo,
-      particulars: challan.particulars,
-      totalUnits: challan.totalUnits,
-    });
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (challan: Challan) => {
+    try {
+      await generateChallanPDF({
+        challanNumber: challan.challanNumber,
+        challanDate: formatBSDate(challan.challanDate),
+        destination: challan.destination,
+        estimateReferenceNo: challan.estimateReferenceNo,
+        particulars: challan.particulars,
+        totalUnits: challan.totalUnits,
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleDelete = async (challanId: string, challanNumber: string) => {
@@ -165,6 +170,12 @@ export default function ChallansPage() {
                       {challan.totalUnits.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
+                      <Link
+                        href={`/dashboard/challans/view/${challan._id}`}
+                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+                      >
+                        View
+                      </Link>
                       <Link
                         href={`/dashboard/challans/${challan._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"

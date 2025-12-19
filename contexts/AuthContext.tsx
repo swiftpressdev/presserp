@@ -26,28 +26,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const checkSession = async () => {
+  const checkSession = async (): Promise<User | null> => {
     try {
       const response = await fetch('/api/auth/session', {
         credentials: 'include',
+        cache: 'no-store', // Prevent caching
       });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.authenticated) {
-          setUser(data.user);
-          return data.user;
-        } else {
-          setUser(null);
-          return null;
-        }
+      
+      // Session endpoint now always returns 200, so check the authenticated flag
+      const data = await response.json();
+      
+      if (data.authenticated) {
+        setUser(data.user);
+        return data.user;
       } else {
-        setUser(null);
+        // Only clear user if we had a user before - this prevents clearing on initial load
+        // Token expired or invalid - clear user only if we were previously authenticated
+        if (user) {
+          console.log('Session expired or invalid, clearing user state');
+          setUser(null);
+        }
         return null;
       }
     } catch (error) {
+      // Network errors - don't clear user, might be temporary
       console.error('Session check failed:', error);
-      setUser(null);
-      return null;
+      // Return current user state to avoid unnecessary logout
+      return user;
     }
   };
 
@@ -59,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     initSession();
   }, []);
+
+  // Removed periodic session check to prevent unnecessary logout issues
+  // Session will be validated naturally when accessing protected routes
 
   const login = async (email: string, password: string) => {
     try {

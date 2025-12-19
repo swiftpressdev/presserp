@@ -20,12 +20,18 @@ interface Estimate {
   totalColorPages: number;
   totalPages: number;
   paperSize: string;
+  finishSize?: string;
   particulars: any[];
   total: number;
-  hasVAT: boolean;
-  subtotal?: number;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  discountAmount?: number;
+  priceAfterDiscount?: number;
+  vatType: 'excluded' | 'included' | 'none';
   vatAmount?: number;
   grandTotal: number;
+  amountInWords?: string;
+  remarks?: string;
 }
 
 interface Client {
@@ -83,27 +89,38 @@ export default function EstimatesPage() {
     router.push(`/dashboard/estimates/${estimate._id}`);
   };
 
-  const handleExportPDF = (estimate: Estimate) => {
-    const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
-    const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
-    
-    generateEstimatePDF({
-      estimateNumber: estimate.estimateNumber,
-      estimateDate: formatBSDate(estimate.estimateDate),
-      clientName,
-      jobNumber,
-      totalBWPages: estimate.totalBWPages,
-      totalColorPages: estimate.totalColorPages,
-      totalPages: estimate.totalPages,
-      paperSize: estimate.paperSize,
-      particulars: estimate.particulars,
-      total: estimate.total,
-      hasVAT: estimate.hasVAT,
-      subtotal: estimate.subtotal,
-      vatAmount: estimate.vatAmount,
-      grandTotal: estimate.grandTotal,
-    });
-    toast.success('PDF exported successfully');
+  const handleExportPDF = async (estimate: Estimate) => {
+    try {
+      const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
+      const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
+      
+      await generateEstimatePDF({
+        estimateNumber: estimate.estimateNumber,
+        estimateDate: formatBSDate(estimate.estimateDate),
+        clientName,
+        jobNumber,
+        totalBWPages: estimate.totalBWPages,
+        totalColorPages: estimate.totalColorPages,
+        totalPages: estimate.totalPages,
+        paperSize: estimate.paperSize,
+        finishSize: estimate.finishSize,
+        particulars: estimate.particulars,
+        total: estimate.total,
+        hasDiscount: estimate.hasDiscount,
+        discountPercentage: estimate.discountPercentage,
+        discountAmount: estimate.discountAmount,
+        priceAfterDiscount: estimate.priceAfterDiscount,
+        vatType: estimate.vatType,
+        vatAmount: estimate.vatAmount,
+        grandTotal: estimate.grandTotal,
+        amountInWords: estimate.amountInWords,
+        remarks: estimate.remarks,
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   const handleDelete = async (estimateId: string, estimateNumber: string) => {
@@ -206,6 +223,12 @@ export default function EstimatesPage() {
                       {estimate.grandTotal.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
+                      <Link
+                        href={`/dashboard/estimates/view/${estimate._id}`}
+                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+                      >
+                        View
+                      </Link>
                       <Link
                         href={`/dashboard/estimates/${estimate._id}`}
                         className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"

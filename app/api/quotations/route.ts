@@ -4,6 +4,7 @@ import Quotation from '@/models/Quotation';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { getNextSequenceNumber, CounterName } from '@/lib/counterService';
 import { z } from 'zod';
+import { ToWords } from 'to-words';
 
 const particularSchema = z.object({
   sn: z.coerce.number(),
@@ -18,7 +19,10 @@ const quotationSchema = z.object({
   address: z.string().min(1, 'Address is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
   particulars: z.array(particularSchema).min(1, 'At least one particular is required'),
-  hasVAT: z.boolean(),
+  hasDiscount: z.boolean().optional(),
+  discountPercentage: z.coerce.number().min(0).max(100).optional(),
+  vatType: z.enum(['excluded', 'included', 'none']),
+  remarks: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -52,15 +56,41 @@ export async function POST(request: NextRequest) {
 
     const total = validatedData.particulars.reduce((sum, item) => sum + item.amount, 0);
 
-    let subtotal = 0;
-    let vatAmount = 0;
-    let grandTotal = total;
-
-    if (validatedData.hasVAT) {
-      subtotal = Number((total / 1.13).toFixed(2));
-      vatAmount = Number((subtotal * 0.13).toFixed(2));
-      grandTotal = Number((subtotal + vatAmount).toFixed(2));
+    let basePrice = total;
+    
+    // If VAT is included in the price, extract it first
+    if (validatedData.vatType === 'included') {
+      basePrice = Number((total / 1.13).toFixed(2));
     }
+    
+    // Step 1: Calculate discount on base price (if enabled)
+    let discountAmount = 0;
+    let priceAfterDiscount = basePrice;
+    
+    if (validatedData.hasDiscount && validatedData.discountPercentage && validatedData.discountPercentage > 0) {
+      discountAmount = Number(((basePrice * validatedData.discountPercentage) / 100).toFixed(2));
+      priceAfterDiscount = Number((basePrice - discountAmount).toFixed(2));
+    }
+    
+    // Step 2: Calculate VAT based on type
+    let vatAmount = 0;
+    let grandTotal = priceAfterDiscount;
+    
+    if (validatedData.vatType === 'excluded' || validatedData.vatType === 'included') {
+      vatAmount = Number((priceAfterDiscount * 0.13).toFixed(2));
+      grandTotal = Number((priceAfterDiscount + vatAmount).toFixed(2));
+    }
+
+    // Convert grand total to words
+    const toWords = new ToWords({
+      localeCode: 'en-IN',
+      converterOptions: {
+        currency: true,
+        ignoreDecimal: false,
+        ignoreZeroCurrency: false,
+      },
+    });
+    const amountInWords = toWords.convert(grandTotal);
 
     const quotation = await Quotation.create({
       ...validatedData,
@@ -68,9 +98,14 @@ export async function POST(request: NextRequest) {
       adminId,
       createdBy: user.email,
       total,
-      subtotal: validatedData.hasVAT ? subtotal : undefined,
-      vatAmount: validatedData.hasVAT ? vatAmount : undefined,
+      hasDiscount: validatedData.hasDiscount || false,
+      discountPercentage: validatedData.hasDiscount ? validatedData.discountPercentage : undefined,
+      discountAmount: validatedData.hasDiscount && discountAmount > 0 ? discountAmount : undefined,
+      priceAfterDiscount: validatedData.hasDiscount && discountAmount > 0 ? priceAfterDiscount : undefined,
+      vatType: validatedData.vatType,
+      vatAmount: validatedData.vatType !== 'none' ? vatAmount : undefined,
       grandTotal,
+      amountInWords,
     });
 
     return NextResponse.json(
