@@ -73,18 +73,19 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (validatedData.filterType === 'particular' && validatedData.particularName) {
-      // Fetch all challans containing this particular
-      const challans = await Challan.find({ 
-        adminId,
-        'particulars.particulars': { $regex: validatedData.particularName, $options: 'i' }
-      })
+      // Fetch all challans to filter by exact particular name match
+      const challans = await Challan.find({ adminId })
         .populate('jobId', 'jobNo')
         .sort({ challanDate: -1 });
 
-      // Extract matching particulars from challans
+      // Normalize the search term for exact matching (case-insensitive, trimmed)
+      const searchTerm = validatedData.particularName.toLowerCase().trim();
+
+      // Extract matching particulars from challans (exact match, case-insensitive)
       for (const challan of challans) {
         for (const particular of challan.particulars) {
-          if (particular.particulars.toLowerCase().includes(validatedData.particularName.toLowerCase())) {
+          // Exact match: case-insensitive comparison
+          if (particular.particulars.toLowerCase().trim() === searchTerm) {
             reportData.push({
               date: challan.challanDate,
               jobNo: typeof challan.jobId === 'object' && challan.jobId ? challan.jobId.jobNo : 'N/A',

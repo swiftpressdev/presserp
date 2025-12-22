@@ -10,11 +10,13 @@ import { PaperType } from '@/lib/types';
 
 interface Paper {
   _id: string;
-  paperName: string;
+  clientName: string;
   paperType: string;
   paperTypeOther?: string;
   paperSize: string;
   paperWeight: string;
+  units: string;
+  originalStock: number;
 }
 
 export default function PapersPage() {
@@ -112,7 +114,7 @@ export default function PapersPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Paper Name
+                    Client Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
@@ -123,6 +125,12 @@ export default function PapersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Weight
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Units
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Original Stock
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -132,10 +140,10 @@ export default function PapersPage() {
                 {papers.map((paper) => (
                   <tr key={paper._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {paper.paperName}
+                      {paper.clientName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.paperType === 'Others' && paper.paperTypeOther
+                      {paper.paperType === 'Other' && paper.paperTypeOther
                         ? paper.paperTypeOther
                         : paper.paperType}
                     </td>
@@ -144,6 +152,12 @@ export default function PapersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {paper.paperWeight}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {paper.units}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {paper.originalStock}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <Link
@@ -159,7 +173,7 @@ export default function PapersPage() {
                         Edit
                       </Link>
                       <button
-                        onClick={() => handleDelete(paper._id, paper.paperName)}
+                        onClick={() => handleDelete(paper._id, paper.clientName)}
                         className="text-red-600 hover:text-red-900 ml-4"
                       >
                         Delete

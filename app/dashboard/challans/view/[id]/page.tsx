@@ -161,7 +161,7 @@ export default function ViewChallanPage() {
             {challan.remarks && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">Remarks</label>
-                <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
                   {challan.remarks}
                 </div>
               </div>

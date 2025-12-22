@@ -808,3 +808,106 @@ export async function generateChallanReportPDF(data: ChallanReportPDFData) {
 
   doc.save(`Challan-Report-${data.reportName}.pdf`);
 }
+
+// Paper Stock PDF Export
+interface PaperStockPDFData {
+  paper: {
+    clientName: string;
+    paperType: string;
+    paperSize: string;
+    paperWeight: string;
+    units: string;
+    originalStock: number;
+  };
+  stockEntries: Array<{
+    date: string;
+    jobNo?: string;
+    jobName?: string;
+    issuedPaper: number;
+    wastage: number;
+    remaining: number;
+    remarks?: string;
+  }>;
+}
+
+export async function generatePaperStockPDF(data: PaperStockPDFData) {
+  const assets = await getSettingsForPDF('Challan');
+  const doc = new jsPDF();
+
+  // Vertical offset when letterhead is present
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('PAPER STOCK REPORT', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
+  doc.setFontSize(10);
+
+  // Paper details
+  doc.setFontSize(12);
+  doc.text(`Client: ${data.paper.clientName}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Type: ${data.paper.paperType}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Size: ${data.paper.paperSize} | Weight: ${data.paper.paperWeight}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Original Stock: ${data.paper.originalStock} ${data.paper.units}`, 20, yPos);
+  yPos += 10;
+
+  // Stock entries table
+  const tableData = data.stockEntries.map((entry, index) => {
+    const remaining = index === 0
+      ? data.paper.originalStock - entry.issuedPaper - entry.wastage
+      : (data.stockEntries[index - 1].remaining - entry.issuedPaper - entry.wastage);
+    
+    return [
+      entry.date,
+      entry.jobNo || '-',
+      entry.jobName || '-',
+      entry.issuedPaper.toString(),
+      entry.wastage.toString(),
+      remaining.toString(),
+      entry.remarks || '-',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Date', 'Job No', 'Job Name', 'Issued Paper', 'Wastage', 'Remaining', 'Remarks']],
+    body: tableData,
+    theme: 'grid',
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 20, halign: 'right' },
+      4: { cellWidth: 20, halign: 'right' },
+      5: { cellWidth: 20, halign: 'right' },
+      6: { cellWidth: 30 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
+  const currentRemaining = data.stockEntries.length > 0
+    ? data.stockEntries[data.stockEntries.length - 1].remaining
+    : data.paper.originalStock;
+
+  doc.setFontSize(10);
+  doc.text(`Current Remaining: ${currentRemaining} ${data.paper.units}`, 20, finalY + 10);
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + 10);
+
+  doc.save(`Paper-Stock-${data.paper.clientName}-${data.paper.paperSize}.pdf`);
+}

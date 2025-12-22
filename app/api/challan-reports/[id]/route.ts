@@ -93,16 +93,19 @@ export async function PUT(
           }
         }
       } else if (report.filterType === 'particular' && report.particularName) {
-        const challans = await Challan.find({ 
-          adminId,
-          'particulars.particulars': { $regex: report.particularName, $options: 'i' }
-        })
+        // Fetch all challans to filter by exact particular name match
+        const challans = await Challan.find({ adminId })
           .populate('jobId', 'jobNo')
           .sort({ challanDate: -1 });
 
+        // Normalize the search term for exact matching (case-insensitive, trimmed)
+        const searchTerm = report.particularName.toLowerCase().trim();
+
+        // Extract matching particulars from challans (exact match, case-insensitive)
         for (const challan of challans) {
           for (const particular of challan.particulars) {
-            if (particular.particulars.toLowerCase().includes(report.particularName.toLowerCase())) {
+            // Exact match: case-insensitive comparison
+            if (particular.particulars.toLowerCase().trim() === searchTerm) {
               reportData.push({
                 date: challan.challanDate,
                 jobNo: typeof challan.jobId === 'object' && challan.jobId ? challan.jobId.jobNo : 'N/A',

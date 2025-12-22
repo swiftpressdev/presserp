@@ -1,14 +1,16 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { PaperType } from '@/lib/types';
+import { PaperType, PaperUnits } from '@/lib/types';
 import { baseSchemaFields, baseSchemaOptions } from '@/lib/baseSchema';
 
 export interface IPaper extends Document {
   adminId: Types.ObjectId | string;
-  paperName: string;
+  clientName: string;
   paperType: PaperType;
   paperTypeOther?: string;
   paperSize: string;
   paperWeight: string;
+  units: PaperUnits;
+  originalStock: number;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -17,7 +19,7 @@ export interface IPaper extends Document {
 const PaperSchema = new Schema<IPaper>(
   {
     ...baseSchemaFields,
-    paperName: {
+    clientName: {
       type: String,
       required: true,
       trim: true,
@@ -40,6 +42,16 @@ const PaperSchema = new Schema<IPaper>(
       type: String,
       required: true,
       trim: true,
+    },
+    units: {
+      type: String,
+      enum: Object.values(PaperUnits),
+      required: true,
+    },
+    originalStock: {
+      type: Number,
+      required: true,
+      default: 0,
     },
   },
   baseSchemaOptions

@@ -13,6 +13,21 @@ export enum UserRole {
 }
 
 export enum PaperType {
+  MAP_LITHO = 'Map Litho',
+  WOOD_FREE = 'Wood Free',
+  ART_PAPER = 'Art Paper',
+  WEIGHTLESS = 'Weightless',
+  OTHER = 'Other',
+}
+
+export enum PaperUnit {
+  REAM = 'Ream',
+  PACKET = 'Packet',
+  SHEET = 'Sheet',
+  OTHERS = 'Others',
+}
+
+export enum PaperUnits {
   REAM = 'Ream',
   PACKET = 'Packet',
   SHEET = 'Sheet',

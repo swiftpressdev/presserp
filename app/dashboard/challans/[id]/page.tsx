@@ -143,7 +143,7 @@ export default function EditChallanPage() {
       clientId,
       jobId: '', // Reset job when client changes
       destination: selectedClient?.address || formData.destination,
-    });
+      });
 
     // Filter jobs by selected client
     if (clientId) {
@@ -152,9 +152,9 @@ export default function EditChallanPage() {
         return jobClientId === clientId;
       });
       setFilteredJobs(filtered);
-    } else {
+      } else {
       setFilteredJobs([]);
-    }
+      }
   };
 
   const handleJobChange = (selectedJobIds: string[]) => {

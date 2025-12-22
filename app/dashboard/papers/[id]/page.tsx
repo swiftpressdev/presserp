@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { PaperType } from '@/lib/types';
+import { PaperType, PaperUnit } from '@/lib/types';
 import toast from 'react-hot-toast';
 
 export default function EditPaperPage() {
@@ -15,11 +15,13 @@ export default function EditPaperPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    paperName: '',
-    paperType: PaperType.REAM,
+    clientName: '',
+    paperType: PaperType.MAP_LITHO,
     paperTypeOther: '',
     paperSize: '',
     paperWeight: '',
+    units: PaperUnit.REAM,
+    originalStock: 0,
   });
 
   useEffect(() => {
@@ -44,11 +46,13 @@ export default function EditPaperPage() {
       }
 
       setFormData({
-        paperName: data.paper.paperName || '',
-        paperType: data.paper.paperType || PaperType.REAM,
+        clientName: data.paper.clientName || '',
+        paperType: data.paper.paperType || PaperType.MAP_LITHO,
         paperTypeOther: data.paper.paperTypeOther || '',
         paperSize: data.paper.paperSize || '',
         paperWeight: data.paper.paperWeight || '',
+        units: data.paper.units || PaperUnit.REAM,
+        originalStock: data.paper.originalStock || 0,
       });
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch paper');
@@ -69,11 +73,13 @@ export default function EditPaperPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          paperName: formData.paperName,
+          clientName: formData.clientName,
           paperType: formData.paperType,
-          paperTypeOther: formData.paperType === PaperType.OTHERS ? formData.paperTypeOther : undefined,
+          paperTypeOther: formData.paperType === PaperType.OTHER ? formData.paperTypeOther : undefined,
           paperSize: formData.paperSize,
           paperWeight: formData.paperWeight,
+          units: formData.units,
+          originalStock: formData.originalStock,
         }),
       });
 
@@ -119,13 +125,13 @@ export default function EditPaperPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Paper Name <span className="text-red-500">*</span>
+                Client Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                value={formData.paperName}
-                onChange={(e) => setFormData({ ...formData, paperName: e.target.value })}
+                value={formData.clientName}
+                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -150,7 +156,7 @@ export default function EditPaperPage() {
               </select>
             </div>
 
-            {formData.paperType === PaperType.OTHERS && (
+            {formData.paperType === PaperType.OTHER && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Specify Other Type <span className="text-red-500">*</span>
@@ -192,6 +198,40 @@ export default function EditPaperPage() {
                 onChange={(e) => setFormData({ ...formData, paperWeight: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="e.g., 80gsm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Units <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={formData.units}
+                onChange={(e) =>
+                  setFormData({ ...formData, units: e.target.value as PaperUnit })
+                }
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                {Object.values(PaperUnit).map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Original Stock
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.originalStock}
+                onChange={(e) => setFormData({ ...formData, originalStock: Number(e.target.value) })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0"
               />
             </div>
           </div>

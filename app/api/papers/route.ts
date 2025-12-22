@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Paper from '@/models/Paper';
 import { requireAuth, getAdminId } from '@/lib/auth';
-import { PaperType } from '@/lib/types';
+import { PaperType, PaperUnit } from '@/lib/types';
 import { z } from 'zod';
 
 const paperSchema = z.object({
-  paperName: z.string().min(1, 'Paper name is required'),
+  clientName: z.string().min(1, 'Client name is required'),
   paperType: z.nativeEnum(PaperType),
   paperTypeOther: z.string().optional(),
   paperSize: z.string().min(1, 'Paper size is required'),
   paperWeight: z.string().min(1, 'Paper weight is required'),
+  units: z.nativeEnum(PaperUnit),
+  originalStock: z.number().min(0, 'Original stock must be 0 or greater').default(0),
 });
 
 export async function GET(request: NextRequest) {
