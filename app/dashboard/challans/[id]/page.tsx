@@ -5,7 +5,21 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import ChallanParticularsTable, { ChallanParticular } from '@/components/ChallanParticularsTable';
+import SearchableMultiSelect from '@/components/SearchableMultiSelect';
 import toast from 'react-hot-toast';
+
+interface Client {
+  _id: string;
+  clientName: string;
+  address?: string;
+}
+
+interface Job {
+  _id: string;
+  jobNo: string;
+  jobName: string;
+  clientId: string | { _id: string; clientName: string };
+}
 
 export default function EditChallanPage() {
   const { user, loading: authLoading } = useAuth();
@@ -14,9 +28,15 @@ export default function EditChallanPage() {
   const challanId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [formData, setFormData] = useState({
     challanDate: '',
+    clientId: '',
+    jobId: '',
     destination: '',
+    remarks: '',
   });
   const [particulars, setParticulars] = useState<ChallanParticular[]>([
     { sn: 1, particulars: '', quantity: 0 },
@@ -28,11 +48,53 @@ export default function EditChallanPage() {
     }
   }, [user, authLoading, router]);
 
+
   useEffect(() => {
     if (user && challanId) {
-      fetchChallan();
+      Promise.all([fetchDropdownData(), fetchChallan()]);
     }
   }, [user, challanId]);
+
+  useEffect(() => {
+    // Filter jobs when clientId or allJobs changes
+    if (formData.clientId && allJobs.length > 0) {
+      const filtered = allJobs.filter((job) => {
+        const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+        return jobClientId === formData.clientId;
+      });
+      setFilteredJobs(filtered);
+    } else {
+      setFilteredJobs([]);
+    }
+  }, [formData.clientId, allJobs]);
+
+  const fetchDropdownData = async () => {
+    try {
+      const [clientsRes, jobsRes] = await Promise.all([
+        fetch('/api/clients'),
+        fetch('/api/jobs'),
+      ]);
+
+      const [clientsData, jobsData] = await Promise.all([
+        clientsRes.json(),
+        jobsRes.json(),
+      ]);
+
+      if (!clientsRes.ok) {
+        throw new Error(clientsData.error || 'Failed to fetch clients');
+      }
+
+      if (!jobsRes.ok) {
+        throw new Error(jobsData.error || 'Failed to fetch jobs');
+      }
+
+      setClients(clientsData.clients || []);
+      setAllJobs(jobsData.jobs || []);
+    } catch (error: any) {
+      console.error('Failed to fetch dropdown data:', error);
+      toast.error(error.message || 'Failed to load data');
+    }
+  };
 
   const fetchChallan = async () => {
     try {
@@ -43,12 +105,19 @@ export default function EditChallanPage() {
         throw new Error(data.error || 'Failed to fetch challan');
       }
 
+      const challan = data.challan;
+      const clientId = challan.clientId?._id || challan.clientId || '';
+      const jobId = challan.jobId?._id || challan.jobId || '';
+
       setFormData({
-        challanDate: data.challan.challanDate || '',
-        destination: data.challan.destination || '',
+        challanDate: challan.challanDate || '',
+        clientId: clientId.toString(),
+        jobId: jobId.toString(),
+        destination: challan.destination || '',
+        remarks: challan.remarks || '',
       });
 
-      const convertedParticulars: ChallanParticular[] = data.challan.particulars.map((p: any) => ({
+      const convertedParticulars: ChallanParticular[] = challan.particulars.map((p: any) => ({
         sn: p.sn || 0,
         particulars: p.particulars || '',
         quantity: p.quantity || 0,
@@ -63,6 +132,34 @@ export default function EditChallanPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClientChange = (selectedClientIds: string[]) => {
+    const clientId = selectedClientIds.length > 0 ? selectedClientIds[0] : '';
+    const selectedClient = clients.find((c) => c._id === clientId);
+    
+    setFormData({
+      ...formData,
+      clientId,
+      jobId: '', // Reset job when client changes
+      destination: selectedClient?.address || formData.destination,
+    });
+
+    // Filter jobs by selected client
+    if (clientId) {
+      const filtered = allJobs.filter((job) => {
+        const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+        return jobClientId === clientId;
+      });
+      setFilteredJobs(filtered);
+    } else {
+      setFilteredJobs([]);
+    }
+  };
+
+  const handleJobChange = (selectedJobIds: string[]) => {
+    const jobId = selectedJobIds.length > 0 ? selectedJobIds[0] : '';
+    setFormData({ ...formData, jobId });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +189,11 @@ export default function EditChallanPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          challanDate: formData.challanDate,
+          clientId: formData.clientId || undefined,
+          jobId: formData.jobId || undefined,
+          destination: formData.destination,
+          remarks: formData.remarks || undefined,
           particulars: indexedParticulars,
         }),
       });
@@ -154,6 +255,37 @@ export default function EditChallanPage() {
             </div>
 
             <div>
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={handleClientChange}
+                label="Client Name"
+                placeholder="Search client..."
+                required
+                emptyMessage="No clients available"
+              />
+            </div>
+
+            <div>
+              <SearchableMultiSelect
+                options={filteredJobs.map((job) => ({
+                  value: job._id,
+                  label: job.jobNo,
+                  sublabel: job.jobName,
+                }))}
+                selectedValues={formData.jobId ? [formData.jobId] : []}
+                onChange={handleJobChange}
+                label="Job Number"
+                placeholder="Search job..."
+                emptyMessage={formData.clientId ? 'No jobs available for this client' : 'Please select a client first'}
+                disabled={!formData.clientId}
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">
                 Destination <span className="text-red-500">*</span>
               </label>
@@ -163,6 +295,7 @@ export default function EditChallanPage() {
                 value={formData.destination}
                 onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Auto-filled from client address"
               />
             </div>
           </div>
@@ -172,6 +305,19 @@ export default function EditChallanPage() {
             <ChallanParticularsTable
               particulars={particulars}
               onChange={setParticulars}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Remarks
+            </label>
+            <textarea
+              value={formData.remarks}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              placeholder="Enter remarks (optional)"
             />
           </div>
 

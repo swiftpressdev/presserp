@@ -6,26 +6,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { generateChallanPDF } from '@/lib/pdfUtils';
 import { formatBSDate } from '@/lib/dateUtils';
-import ChallanParticularsTable, { ChallanParticular } from '@/components/ChallanParticularsTable';
 
-interface Challan {
+interface ChallanReport {
   _id: string;
-  challanNumber: string;
-  challanDate: string;
-  clientId?: { _id: string; clientName: string } | string;
-  jobId?: { _id: string; jobNo: string; jobName: string } | string;
-  destination: string;
-  remarks?: string;
-  particulars: ChallanParticular[];
-  totalUnits: number;
+  reportName: string;
+  filterType: 'client' | 'particular';
+  clientId?: { _id: string; clientName: string };
+  particularName?: string;
+  finalOrder?: number;
+  totalIssued: number;
+  lastUpdated: Date;
 }
 
-export default function ChallansPage() {
+export default function ChallanReportsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [challans, setChallans] = useState<Challan[]>([]);
+  const [reports, setReports] = useState<ChallanReport[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,73 +33,47 @@ export default function ChallansPage() {
 
   useEffect(() => {
     if (user) {
-      fetchChallans();
+      fetchReports();
     }
   }, [user]);
 
-  const fetchChallans = async () => {
+  const fetchReports = async () => {
     try {
-      const response = await fetch('/api/challans');
+      const response = await fetch('/api/challan-reports');
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error);
       }
 
-      setChallans(data.challans);
+      setReports(data.reports);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch challans');
+      toast.error(error.message || 'Failed to fetch challan reports');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (challan: Challan) => {
-    router.push(`/dashboard/challans/${challan._id}`);
-  };
-
-  const handleExportPDF = async (challan: Challan) => {
-    try {
-      const clientName = challan.clientId ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A') : '';
-      const jobNo = challan.jobId ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : 'N/A') : '';
-      
-      await generateChallanPDF({
-        challanNumber: challan.challanNumber,
-        challanDate: formatBSDate(challan.challanDate),
-        clientName: clientName || undefined,
-        jobNo: jobNo || undefined,
-        destination: challan.destination,
-        remarks: challan.remarks || undefined,
-        particulars: challan.particulars,
-        totalUnits: challan.totalUnits,
-      });
-      toast.success('PDF exported successfully');
-    } catch (error) {
-      console.error('PDF export error:', error);
-      toast.error('Failed to export PDF');
-    }
-  };
-
-  const handleDelete = async (challanId: string, challanNumber: string) => {
-    if (!confirm(`Are you sure you want to delete challan "${challanNumber}"?`)) {
+  const handleDelete = async (reportId: string, reportName: string) => {
+    if (!confirm(`Are you sure you want to delete report "${reportName}"?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/challans/${challanId}`, {
+      const response = await fetch(`/api/challan-reports/${reportId}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete challan');
+        throw new Error(data.error || 'Failed to delete report');
       }
 
-      toast.success('Challan deleted successfully');
-      fetchChallans();
+      toast.success('Report deleted successfully');
+      fetchReports();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete challan');
+      toast.error(error.message || 'Failed to delete report');
     }
   };
 
@@ -118,20 +89,20 @@ export default function ChallansPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Challans</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Challan Reports</h1>
           <Link
-            href="/dashboard/challans/create"
+            href="/dashboard/challan-reports/create"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Create Challan
+            Create Report
           </Link>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading challans...</div>
-        ) : challans.length === 0 ? (
+          <div className="text-center py-12">Loading reports...</div>
+        ) : reports.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No challans found. Create your first challan.</p>
+            <p className="text-gray-500">No reports found. Create your first challan report.</p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -139,19 +110,22 @@ export default function ChallansPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    SN
+                    Report Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    Filter Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client
+                    Filter Value
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Destination
+                    Final Order
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Units
+                    Total Issued
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Updated
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -159,44 +133,37 @@ export default function ChallansPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {challans.map((challan) => (
-                  <tr key={challan._id} className="hover:bg-gray-50">
+                {reports.map((report) => (
+                  <tr key={report._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {challan.challanNumber}
+                      {report.reportName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatBSDate(challan.challanDate)}
+                      {report.filterType === 'client' ? 'Client' : 'Particular'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.clientId ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A') : '-'}
+                      {report.filterType === 'client' 
+                        ? (report.clientId?.clientName || 'N/A')
+                        : (report.particularName || 'N/A')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.destination}
+                      {report.finalOrder || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.totalUnits.toFixed(2)}
+                      {report.totalIssued}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(report.lastUpdated).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
                       <Link
-                        href={`/dashboard/challans/view/${challan._id}`}
+                        href={`/dashboard/challan-reports/view/${report._id}`}
                         className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
                       >
                         View
                       </Link>
-                      <Link
-                        href={`/dashboard/challans/${challan._id}`}
-                        className="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
-                      >
-                        Edit
-                      </Link>
                       <button
-                        onClick={() => handleExportPDF(challan)}
-                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
-                      >
-                        PDF
-                      </button>
-                      <button
-                        onClick={() => handleDelete(challan._id, challan.challanNumber)}
+                        onClick={() => handleDelete(report._id, report.reportName)}
                         className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
                       >
                         Delete

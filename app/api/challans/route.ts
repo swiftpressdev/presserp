@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+// Import models to ensure they're registered
+import '@/models/Client';
+import '@/models/Job';
 import Challan from '@/models/Challan';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { getNextSequenceNumber, CounterName } from '@/lib/counterService';
@@ -13,7 +16,10 @@ const challanParticularSchema = z.object({
 
 const challanSchema = z.object({
   challanDate: z.string().min(1, 'Challan date is required'),
+  clientId: z.string().optional(),
+  jobId: z.string().optional(),
   destination: z.string().min(1, 'Destination is required'),
+  remarks: z.string().optional(),
   particulars: z.array(challanParticularSchema).min(1, 'At least one particular is required'),
 });
 
@@ -23,7 +29,10 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
-    const challans = await Challan.find({ adminId }).sort({ createdAt: -1 });
+    const challans = await Challan.find({ adminId })
+      .populate('clientId', 'clientName')
+      .populate('jobId', 'jobNo jobName')
+      .sort({ createdAt: -1 });
 
     return NextResponse.json({ challans }, { status: 200 });
   } catch (error: any) {
@@ -54,7 +63,10 @@ export async function POST(request: NextRequest) {
       adminId,
       challanNumber,
       challanDate: validatedData.challanDate,
+      clientId: validatedData.clientId || undefined,
+      jobId: validatedData.jobId || undefined,
       destination: validatedData.destination,
+      remarks: validatedData.remarks || undefined,
       particulars: validatedData.particulars,
       totalUnits,
       createdBy: user.email || user.id,

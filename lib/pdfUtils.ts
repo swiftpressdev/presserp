@@ -634,7 +634,10 @@ interface ChallanParticular {
 interface ChallanData {
   challanNumber: string;
   challanDate: string;
+  clientName?: string;
+  jobNo?: string;
   destination: string;
+  remarks?: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -661,8 +664,21 @@ export async function generateChallanPDF(data: ChallanData) {
   yPos += 7;
   doc.text(`Date: ${data.challanDate}`, 20, yPos);
   yPos += 7;
+  if (data.clientName) {
+    doc.text(`Client: ${data.clientName}`, 20, yPos);
+    yPos += 7;
+  }
+  if (data.jobNo) {
+    doc.text(`Job No: ${data.jobNo}`, 20, yPos);
+    yPos += 7;
+  }
   doc.text(`Destination: ${data.destination}`, 20, yPos);
-  yPos += 10;
+  yPos += 7;
+  if (data.remarks) {
+    doc.text(`Remarks: ${data.remarks}`, 20, yPos);
+    yPos += 7;
+  }
+  yPos += 3;
 
   const tableData = data.particulars.map((p) => [
     p.sn.toString(),
@@ -696,4 +712,99 @@ export async function generateChallanPDF(data: ChallanData) {
   await addCompanyAssets(doc, assets, finalY + 10);
 
   doc.save(`Challan-${data.challanNumber}.pdf`);
+}
+
+// Challan Report PDF Export
+interface ChallanReportData {
+  date: string;
+  jobNo: string;
+  challanNo: string;
+  particulars: string;
+  quantity: number;
+  remarks?: string;
+}
+
+interface ChallanReportPDFData {
+  reportName: string;
+  filterType: string;
+  filterValue: string;
+  finalOrder: number;
+  totalIssued: number;
+  reportData: ChallanReportData[];
+  lastUpdated: string;
+}
+
+export async function generateChallanReportPDF(data: ChallanReportPDFData) {
+  const assets = await getSettingsForPDF('Challan');
+  const doc = new jsPDF();
+
+  // Vertical offset when letterhead is present
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('CHALLAN REPORT', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
+  doc.setFontSize(10);
+
+  // Report header
+  doc.setFontSize(14);
+  doc.text(data.reportName, 105, yPos, { align: 'center' });
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.text(`Filter: ${data.filterType} - ${data.filterValue}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Last Updated: ${data.lastUpdated}`, 20, yPos);
+  yPos += 10;
+
+  // Summary section
+  doc.setFontSize(11);
+  doc.text(`Final Order: ${data.finalOrder}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Total Issued: ${data.totalIssued}`, 20, yPos);
+  yPos += 10;
+
+  // Report data table
+  const tableData = data.reportData.map((item) => [
+    item.date,
+    item.jobNo,
+    item.challanNo,
+    item.particulars,
+    item.quantity.toString(),
+    item.remarks || '-',
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Date', 'Job No', 'Challan No', 'Particulars', 'Quantity', 'Remarks']],
+    body: tableData,
+    theme: 'grid',
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 20, halign: 'right' },
+      5: { cellWidth: 30 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + 10);
+
+  doc.save(`Challan-Report-${data.reportName}.pdf`);
 }
