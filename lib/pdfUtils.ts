@@ -243,11 +243,18 @@ export async function generateQuotationPDF(data: QuotationData) {
   doc.save(`Quotation-${data.quotationSN}.pdf`);
 }
 
+interface DeliveryNote {
+  date: string;
+  challanNo: string;
+  quantity: number;
+  remarks?: string;
+}
+
 interface EstimateData {
   estimateNumber: string;
   estimateDate: string;
   clientName: string;
-  jobNumber: string;
+  jobNumber: string | string[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -264,6 +271,7 @@ interface EstimateData {
   grandTotal: number;
   amountInWords?: string;
   remarks?: string;
+  deliveryNotes?: DeliveryNote[];
 }
 
 export async function generateEstimatePDF(data: EstimateData) {
@@ -299,7 +307,8 @@ export async function generateEstimatePDF(data: EstimateData) {
   doc.text(data.estimateDate, dateX, 42 + letterheadOffset);
 
   doc.text(`Client: ${data.clientName}`, 20, 49 + letterheadOffset);
-  doc.text(`Job No: ${data.jobNumber}`, 20, 56 + letterheadOffset);
+  const jobNumbers = Array.isArray(data.jobNumber) ? data.jobNumber.join(', ') : data.jobNumber;
+  doc.text(`Job ${Array.isArray(data.jobNumber) && data.jobNumber.length > 1 ? 'Nos' : 'No'}: ${jobNumbers}`, 20, 56 + letterheadOffset);
   doc.text(`Paper Size: ${data.paperSize}`, 20, 63 + letterheadOffset);
   doc.text(
     `Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`,
@@ -401,6 +410,47 @@ export async function generateEstimatePDF(data: EstimateData) {
     const remarksLines = doc.splitTextToSize(data.remarks, 180);
     doc.text(remarksLines, 20, currentY);
     currentY += remarksLines.length * 5;
+  }
+
+  // Add Delivery Notes if present
+  if (data.deliveryNotes && data.deliveryNotes.length > 0) {
+    currentY += 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Delivery Notes', 20, currentY);
+    currentY += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    const deliveryNotesTableData = data.deliveryNotes.map((note) => [
+      formatBSDate(note.date),
+      note.challanNo,
+      note.quantity.toFixed(2),
+      note.remarks || '-',
+    ]);
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Date (BS)', 'Challan No', 'Quantity', 'Remarks']],
+      body: deliveryNotesTableData,
+      theme: 'grid',
+      margin: { left: 20, right: 20 },
+      headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      styles: { lineWidth: 0.2, lineColor: [0, 0, 0], fontSize: 9 },
+      tableLineWidth: 0.2,
+      tableLineColor: [0, 0, 0],
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // Add total quantity
+    const totalQuantity = data.deliveryNotes.reduce((sum, note) => sum + note.quantity, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Quantity: ${totalQuantity.toFixed(2)}`, 20, currentY);
+    doc.setFont('helvetica', 'normal');
+    currentY += 7;
   }
 
   // Add company assets (logo, stamp, signature)
@@ -584,8 +634,10 @@ interface ChallanParticular {
 interface ChallanData {
   challanNumber: string;
   challanDate: string;
+  clientName?: string;
+  jobNo?: string;
   destination: string;
-  estimateReferenceNo: string;
+  remarks?: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -612,10 +664,21 @@ export async function generateChallanPDF(data: ChallanData) {
   yPos += 7;
   doc.text(`Date: ${data.challanDate}`, 20, yPos);
   yPos += 7;
+  if (data.clientName) {
+    doc.text(`Client: ${data.clientName}`, 20, yPos);
+    yPos += 7;
+  }
+  if (data.jobNo) {
+    doc.text(`Job No: ${data.jobNo}`, 20, yPos);
+    yPos += 7;
+  }
   doc.text(`Destination: ${data.destination}`, 20, yPos);
   yPos += 7;
-  doc.text(`Estimate Reference No: ${data.estimateReferenceNo}`, 20, yPos);
-  yPos += 10;
+  if (data.remarks) {
+    doc.text(`Remarks: ${data.remarks}`, 20, yPos);
+    yPos += 7;
+  }
+  yPos += 3;
 
   const tableData = data.particulars.map((p) => [
     p.sn.toString(),
@@ -649,4 +712,202 @@ export async function generateChallanPDF(data: ChallanData) {
   await addCompanyAssets(doc, assets, finalY + 10);
 
   doc.save(`Challan-${data.challanNumber}.pdf`);
+}
+
+// Challan Report PDF Export
+interface ChallanReportData {
+  date: string;
+  jobNo: string;
+  challanNo: string;
+  particulars: string;
+  quantity: number;
+  remarks?: string;
+}
+
+interface ChallanReportPDFData {
+  reportName: string;
+  filterType: string;
+  filterValue: string;
+  finalOrder: number;
+  totalIssued: number;
+  reportData: ChallanReportData[];
+  lastUpdated: string;
+}
+
+export async function generateChallanReportPDF(data: ChallanReportPDFData) {
+  const assets = await getSettingsForPDF('Challan');
+  const doc = new jsPDF();
+
+  // Vertical offset when letterhead is present
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('CHALLAN REPORT', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
+  doc.setFontSize(10);
+
+  // Report header
+  doc.setFontSize(14);
+  doc.text(data.reportName, 105, yPos, { align: 'center' });
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.text(`Filter: ${data.filterType} - ${data.filterValue}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Last Updated: ${data.lastUpdated}`, 20, yPos);
+  yPos += 10;
+
+  // Summary section
+  doc.setFontSize(11);
+  doc.text(`Final Order: ${data.finalOrder}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Total Issued: ${data.totalIssued}`, 20, yPos);
+  yPos += 10;
+
+  // Report data table
+  const tableData = data.reportData.map((item) => [
+    item.date,
+    item.jobNo,
+    item.challanNo,
+    item.particulars,
+    item.quantity.toString(),
+    item.remarks || '-',
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Date', 'Job No', 'Challan No', 'Particulars', 'Quantity', 'Remarks']],
+    body: tableData,
+    theme: 'grid',
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 20, halign: 'right' },
+      5: { cellWidth: 30 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + 10);
+
+  doc.save(`Challan-Report-${data.reportName}.pdf`);
+}
+
+// Paper Stock PDF Export
+interface PaperStockPDFData {
+  paper: {
+    clientName: string;
+    paperType: string;
+    paperSize: string;
+    paperWeight: string;
+    units: string;
+    originalStock: number;
+  };
+  stockEntries: Array<{
+    date: string;
+    jobNo?: string;
+    jobName?: string;
+    issuedPaper: number;
+    wastage: number;
+    remaining: number;
+    remarks?: string;
+  }>;
+}
+
+export async function generatePaperStockPDF(data: PaperStockPDFData) {
+  const assets = await getSettingsForPDF('Challan');
+  const doc = new jsPDF();
+
+  // Vertical offset when letterhead is present
+  const letterheadOffset = assets.letterhead ? 40 : 0;
+
+  // Add letterhead background if configured
+  if (assets.letterhead) {
+    await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  doc.setFontSize(20);
+  doc.text('PAPER STOCK REPORT', 105, 20 + letterheadOffset, { align: 'center' });
+
+  let yPos = 35 + letterheadOffset;
+  doc.setFontSize(10);
+
+  // Paper details
+  doc.setFontSize(12);
+  doc.text(`Client: ${data.paper.clientName}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Type: ${data.paper.paperType}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Size: ${data.paper.paperSize} | Weight: ${data.paper.paperWeight}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Original Stock: ${data.paper.originalStock} ${data.paper.units}`, 20, yPos);
+  yPos += 10;
+
+  // Stock entries table
+  const tableData = data.stockEntries.map((entry, index) => {
+    const remaining = index === 0
+      ? data.paper.originalStock - entry.issuedPaper - entry.wastage
+      : (data.stockEntries[index - 1].remaining - entry.issuedPaper - entry.wastage);
+    
+    return [
+      entry.date,
+      entry.jobNo || '-',
+      entry.jobName || '-',
+      entry.issuedPaper.toString(),
+      entry.wastage.toString(),
+      remaining.toString(),
+      entry.remarks || '-',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Date', 'Job No', 'Job Name', 'Issued Paper', 'Wastage', 'Remaining', 'Remarks']],
+    body: tableData,
+    theme: 'grid',
+    margin: { left: 20, right: 20 },
+    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
+    tableLineWidth: 0.2,
+    tableLineColor: [0, 0, 0],
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 20, halign: 'right' },
+      4: { cellWidth: 20, halign: 'right' },
+      5: { cellWidth: 20, halign: 'right' },
+      6: { cellWidth: 30 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
+  const currentRemaining = data.stockEntries.length > 0
+    ? data.stockEntries[data.stockEntries.length - 1].remaining
+    : data.paper.originalStock;
+
+  doc.setFontSize(10);
+  doc.text(`Current Remaining: ${currentRemaining} ${data.paper.units}`, 20, finalY + 10);
+
+  // Add company assets (logo, stamp, signature)
+  await addCompanyAssets(doc, assets, finalY + 10);
+
+  doc.save(`Paper-Stock-${data.paper.clientName}-${data.paper.paperSize}.pdf`);
 }

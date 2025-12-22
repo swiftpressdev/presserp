@@ -15,7 +15,7 @@ interface Estimate {
   estimateNumber: string;
   estimateDate: string;
   clientId: string | { _id: string; clientName: string };
-  jobId: string | { _id: string; jobNo: string; jobName: string };
+  jobId: string | { _id: string; jobNo: string; jobName: string } | (string | { _id: string; jobNo: string; jobName: string })[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -32,6 +32,12 @@ interface Estimate {
   grandTotal: number;
   amountInWords?: string;
   remarks?: string;
+  deliveryNotes?: Array<{
+    date: string;
+    challanNo: string;
+    quantity: number;
+    remarks?: string;
+  }>;
 }
 
 interface Client {
@@ -92,13 +98,16 @@ export default function EstimatesPage() {
   const handleExportPDF = async (estimate: Estimate) => {
     try {
       const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-';
-      const jobNumber = typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-';
+      
+      // Handle jobId as array or single value
+      const jobIds = Array.isArray(estimate.jobId) ? estimate.jobId : [estimate.jobId];
+      const jobNumbers = jobIds.map((j: any) => typeof j === 'object' ? j.jobNo : '-');
       
       await generateEstimatePDF({
         estimateNumber: estimate.estimateNumber,
         estimateDate: formatBSDate(estimate.estimateDate),
         clientName,
-        jobNumber,
+        jobNumber: jobNumbers,
         totalBWPages: estimate.totalBWPages,
         totalColorPages: estimate.totalColorPages,
         totalPages: estimate.totalPages,
@@ -115,6 +124,7 @@ export default function EstimatesPage() {
         grandTotal: estimate.grandTotal,
         amountInWords: estimate.amountInWords,
         remarks: estimate.remarks,
+        deliveryNotes: estimate.deliveryNotes,
       });
       toast.success('PDF exported successfully');
     } catch (error) {
@@ -214,10 +224,16 @@ export default function EstimatesPage() {
                       {typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobNo : '-'}
+                      {(() => {
+                        const jobIds = Array.isArray(estimate.jobId) ? estimate.jobId : [estimate.jobId];
+                        return jobIds.map((j: any) => typeof j === 'object' ? j.jobNo : '-').join(', ');
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {typeof estimate.jobId === 'object' ? estimate.jobId.jobName : '-'}
+                      {(() => {
+                        const jobIds = Array.isArray(estimate.jobId) ? estimate.jobId : [estimate.jobId];
+                        return jobIds.map((j: any) => typeof j === 'object' ? j.jobName : '-').join(', ');
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {estimate.grandTotal.toFixed(2)}

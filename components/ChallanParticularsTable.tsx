@@ -50,59 +50,44 @@ export default function ChallanParticularsTable({
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                SN
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                Particulars
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Quantity
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Action
-              </th>
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-gray-300 px-4 py-2 text-left">SN</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Particulars</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Quantity</th>
+              <th className="border border-gray-300 px-4 py-2 text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {particulars.map((particular, index) => (
               <tr key={index}>
-                <td className="px-4 py-2 border-r border-gray-300">
-                  <input
-                    type="number"
-                    value={particular.sn}
-                    readOnly
-                    className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
-                  />
-                </td>
-                <td className="px-4 py-2 border-r border-gray-300">
+                <td className="border border-gray-300 px-4 py-2">{particular.sn}</td>
+                <td className="border border-gray-300 px-4 py-2">
                   <input
                     type="text"
                     value={particular.particulars}
                     onChange={(e) => updateRow(index, 'particulars', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
+                    className="w-full px-2 py-1 border border-gray-300 rounded"
+                    placeholder="Enter particulars"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="border border-gray-300 px-4 py-2">
                   <input
                     type="number"
-                    value={particular.quantity}
+                    value={particular.quantity === 0 ? '' : particular.quantity}
                     onChange={(e) => updateRow(index, 'quantity', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded"
                     min="0"
-                    step="0.01"
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
+                    step="1"
+                    placeholder="0"
                   />
                 </td>
-                <td className="px-4 py-2 text-center">
+                <td className="border border-gray-300 px-4 py-2 text-center">
                   <button
                     type="button"
                     onClick={() => removeRow(index)}
-                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800"
+                    className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
                   >
                     Remove
                   </button>
@@ -112,10 +97,10 @@ export default function ChallanParticularsTable({
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
-              <td colSpan={2} className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-gray-300">
+              <td colSpan={2} className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-700">
                 Total Units:
               </td>
-              <td colSpan={2} className="px-4 py-3 text-left font-semibold text-gray-900">
+              <td colSpan={2} className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">
                 {totalUnits.toFixed(2)}
               </td>
             </tr>
@@ -126,7 +111,7 @@ export default function ChallanParticularsTable({
       <button
         type="button"
         onClick={addRow}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
       >
         Add Row
       </button>

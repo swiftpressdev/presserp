@@ -6,23 +6,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { PaperType } from '@/lib/types';
+import { formatBSDate } from '@/lib/dateUtils';
 
-interface Paper {
+interface ChallanReport {
   _id: string;
-  clientName: string;
-  paperType: string;
-  paperTypeOther?: string;
-  paperSize: string;
-  paperWeight: string;
-  units: string;
-  originalStock: number;
+  reportName: string;
+  filterType: 'client' | 'particular';
+  clientId?: { _id: string; clientName: string };
+  particularName?: string;
+  finalOrder?: number;
+  totalIssued: number;
+  lastUpdated: Date;
 }
 
-export default function PapersPage() {
+export default function ChallanReportsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [papers, setPapers] = useState<Paper[]>([]);
+  const [reports, setReports] = useState<ChallanReport[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,51 +33,47 @@ export default function PapersPage() {
 
   useEffect(() => {
     if (user) {
-      fetchPapers();
+      fetchReports();
     }
   }, [user]);
 
-  const fetchPapers = async () => {
+  const fetchReports = async () => {
     try {
-      const response = await fetch('/api/papers');
+      const response = await fetch('/api/challan-reports');
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error);
       }
 
-      setPapers(data.papers);
+      setReports(data.reports);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch papers');
+      toast.error(error.message || 'Failed to fetch challan reports');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (paper: Paper) => {
-    router.push(`/dashboard/papers/${paper._id}`);
-  };
-
-  const handleDelete = async (paperId: string, paperName: string) => {
-    if (!confirm(`Are you sure you want to delete "${paperName}"?`)) {
+  const handleDelete = async (reportId: string, reportName: string) => {
+    if (!confirm(`Are you sure you want to delete report "${reportName}"?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/papers/${paperId}`, {
+      const response = await fetch(`/api/challan-reports/${reportId}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete paper');
+        throw new Error(data.error || 'Failed to delete report');
       }
 
-      toast.success('Paper deleted successfully');
-      fetchPapers();
+      toast.success('Report deleted successfully');
+      fetchReports();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete paper');
+      toast.error(error.message || 'Failed to delete report');
     }
   };
 
@@ -93,20 +89,20 @@ export default function PapersPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Papers</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Challan Reports</h1>
           <Link
-            href="/dashboard/papers/create"
+            href="/dashboard/challan-reports/create"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Add Paper
+            Create Report
           </Link>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading papers...</div>
-        ) : papers.length === 0 ? (
+          <div className="text-center py-12">Loading reports...</div>
+        ) : reports.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No papers found. Create your first paper.</p>
+            <p className="text-gray-500">No reports found. Create your first challan report.</p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -114,67 +110,61 @@ export default function PapersPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client Name
+                    Report Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
+                    Filter Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Size
+                    Filter Value
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Weight
+                    Final Order
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Units
+                    Total Issued
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Original Stock
+                    Last Updated
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {papers.map((paper) => (
-                  <tr key={paper._id} className="hover:bg-gray-50">
+                {reports.map((report) => (
+                  <tr key={report._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {paper.clientName}
+                      {report.reportName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.paperType === 'Other' && paper.paperTypeOther
-                        ? paper.paperTypeOther
-                        : paper.paperType}
+                      {report.filterType === 'client' ? 'Client' : 'Particular'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.paperSize}
+                      {report.filterType === 'client' 
+                        ? (report.clientId?.clientName || 'N/A')
+                        : (report.particularName || 'N/A')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.paperWeight}
+                      {report.finalOrder || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.units}
+                      {report.totalIssued}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.originalStock}
+                      {new Date(report.lastUpdated).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
                       <Link
-                        href={`/dashboard/papers/view/${paper._id}`}
-                        className="text-green-600 hover:text-green-900"
+                        href={`/dashboard/challan-reports/view/${report._id}`}
+                        className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
                       >
                         View
                       </Link>
-                      <Link
-                        href={`/dashboard/papers/${paper._id}`}
-                        className="text-blue-600 hover:text-blue-900 ml-4"
-                      >
-                        Edit
-                      </Link>
                       <button
-                        onClick={() => handleDelete(paper._id, paper.clientName)}
-                        className="text-red-600 hover:text-red-900 ml-4"
+                        onClick={() => handleDelete(report._id, report.reportName)}
+                        className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
                       >
                         Delete
                       </button>

@@ -21,6 +21,7 @@ const menuItems: MenuItem[] = [
   { name: 'Equipment', path: '/dashboard/equipment' },
   { name: 'Estimates', path: '/dashboard/estimates' },
   { name: 'Challan', path: '/dashboard/challans' },
+  { name: 'Challan Reports', path: '/dashboard/challan-reports' },
   { name: 'Settings', path: '/dashboard/settings', adminOnly: true },
 ];
 

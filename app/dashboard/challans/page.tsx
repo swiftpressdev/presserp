@@ -14,8 +14,10 @@ interface Challan {
   _id: string;
   challanNumber: string;
   challanDate: string;
+  clientId?: { _id: string; clientName: string } | string;
+  jobId?: { _id: string; jobNo: string; jobName: string } | string;
   destination: string;
-  estimateReferenceNo: string;
+  remarks?: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -61,11 +63,16 @@ export default function ChallansPage() {
 
   const handleExportPDF = async (challan: Challan) => {
     try {
+      const clientName = challan.clientId ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A') : '';
+      const jobNo = challan.jobId ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : 'N/A') : '';
+      
       await generateChallanPDF({
         challanNumber: challan.challanNumber,
         challanDate: formatBSDate(challan.challanDate),
+        clientName: clientName || undefined,
+        jobNo: jobNo || undefined,
         destination: challan.destination,
-        estimateReferenceNo: challan.estimateReferenceNo,
+        remarks: challan.remarks || undefined,
         particulars: challan.particulars,
         totalUnits: challan.totalUnits,
       });
@@ -138,10 +145,10 @@ export default function ChallansPage() {
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Destination
+                    Client
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estimate Reference
+                    Destination
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total Units
@@ -161,10 +168,10 @@ export default function ChallansPage() {
                       {formatBSDate(challan.challanDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.destination}
+                      {challan.clientId ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A') : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {challan.estimateReferenceNo}
+                      {challan.destination}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {challan.totalUnits.toFixed(2)}

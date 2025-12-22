@@ -8,6 +8,13 @@ import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
+interface DefaultParticular {
+  particularName: string;
+  unit: string;
+  quantity: number;
+  rate: number;
+}
+
 interface Settings {
   quotationPrefix: string;
   jobPrefix: string;
@@ -26,6 +33,7 @@ interface Settings {
   companyStampUseIn?: string[];
   letterheadUseIn?: string[];
   esignatureUseIn?: string[];
+  defaultParticulars?: DefaultParticular[];
 }
 
 export default function SettingsPage() {
@@ -52,7 +60,9 @@ export default function SettingsPage() {
     companyStampUseIn: [],
     letterheadUseIn: [],
     esignatureUseIn: [],
+    defaultParticulars: [],
   });
+  const [originalSettings, setOriginalSettings] = useState<Settings | null>(null);
   const [pendingFiles, setPendingFiles] = useState<{
     [key: string]: File | null;
   }>({});
@@ -153,6 +163,7 @@ export default function SettingsPage() {
       }
 
       setSettings(data.settings);
+      setOriginalSettings(data.settings); // Store original for change detection
       setUsersCount(data.usersCount || 0);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch settings');
@@ -236,6 +247,51 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Check if there are any unsaved changes
+  const hasUnsavedChanges = () => {
+    if (!originalSettings) return false;
+    
+    // Check for pending files
+    if (Object.values(pendingFiles).some(f => f !== null)) return true;
+    
+    // Deep compare settings with original
+    return JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  };
+
+  // Handle default particulars
+  const addDefaultParticular = () => {
+    const newParticular: DefaultParticular = {
+      particularName: '',
+      unit: '',
+      quantity: 0,
+      rate: 0,
+    };
+    setSettings({
+      ...settings,
+      defaultParticulars: [...(settings.defaultParticulars || []), newParticular],
+    });
+  };
+
+  const removeDefaultParticular = (index: number) => {
+    const updated = (settings.defaultParticulars || []).filter((_, i) => i !== index);
+    setSettings({ ...settings, defaultParticulars: updated });
+  };
+
+  const updateDefaultParticular = (
+    index: number,
+    field: keyof DefaultParticular,
+    value: string | number
+  ) => {
+    const updated = [...(settings.defaultParticulars || [])];
+    if (field === 'quantity' || field === 'rate') {
+      const numValue = value === '' || value === null || value === undefined ? 0 : Number(value);
+      updated[index] = { ...updated[index], [field]: numValue };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setSettings({ ...settings, defaultParticulars: updated });
   };
 
   const handleAssetSelect = (
@@ -499,14 +555,6 @@ export default function SettingsPage() {
                     placeholder="Enter registration number"
                   />
                 </div>
-
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={saving}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save Company Information'}
-                </button>
               </div>
             </div>
 
@@ -819,14 +867,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={saving || Object.values(uploading).some(v => v)}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : Object.values(pendingFiles).some(f => f !== null) ? 'Save Assets & Settings' : 'Save Settings'}
-                </button>
               </div>
             </div>
 
@@ -909,13 +949,129 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
+                  </div>
+                </div>
 
+            {/* Default Particulars */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Default Particulars
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Set default particulars that can be quickly added to estimates and quotations.
+              </p>
+
+              {settings.defaultParticulars && settings.defaultParticulars.length > 0 ? (
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-4 py-2 text-left">Particular Name</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Quantity</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Rate</th>
+                        <th className="border border-gray-300 px-4 py-2 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settings.defaultParticulars.map((particular, index) => (
+                        <tr key={index}>
+                          <td className="border border-gray-300 px-4 py-2">
+                            <input
+                              type="text"
+                              value={particular.particularName}
+                              onChange={(e) =>
+                                updateDefaultParticular(index, 'particularName', e.target.value)
+                              }
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Enter particular name"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            <input
+                              type="text"
+                              value={particular.unit}
+                              onChange={(e) =>
+                                updateDefaultParticular(index, 'unit', e.target.value)
+                              }
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="e.g., pcs, box"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            <input
+                              type="number"
+                              value={particular.quantity === 0 ? '' : particular.quantity}
+                              onChange={(e) =>
+                                updateDefaultParticular(index, 'quantity', e.target.value)
+                              }
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            <input
+                              type="number"
+                              value={particular.rate === 0 ? '' : particular.rate}
+                              onChange={(e) =>
+                                updateDefaultParticular(index, 'rate', e.target.value)
+                              }
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeDefaultParticular(index)}
+                              className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mb-4 italic">
+                  No default particulars added yet. Click below to add your first one.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={addDefaultParticular}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700"
+              >
+                Add Default Particular
+              </button>
+            </div>
+
+            {/* Consolidated Save Button */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {hasUnsavedChanges() ? 'You have unsaved changes' : 'All settings saved'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {hasUnsavedChanges()
+                      ? 'Click the button to save all changes made to company information, assets, prefixes, and default particulars.'
+                      : 'All your settings are up to date.'}
+                  </p>
+                </div>
                 <button
                   onClick={handleSaveSettings}
-                  disabled={saving}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  disabled={saving || Object.values(uploading).some(v => v) || !hasUnsavedChanges()}
+                  className="px-8 py-3 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                 >
-                  {saving ? 'Saving...' : 'Save Prefixes'}
+                  {saving ? 'Saving All Settings...' : 'Save All Settings'}
                 </button>
               </div>
             </div>

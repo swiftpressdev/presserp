@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
+export interface IDefaultParticular {
+  particularName: string;
+  unit: string;
+  quantity: number;
+  rate: number;
+}
+
 export interface ISettings extends Document {
   adminId: Types.ObjectId | string;
   quotationPrefix: string;
@@ -24,6 +31,8 @@ export interface ISettings extends Document {
   companyStampUseIn?: string[];
   letterheadUseIn?: string[];
   esignatureUseIn?: string[];
+  // Default Particulars
+  defaultParticulars?: IDefaultParticular[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,6 +133,18 @@ const SettingsSchema = new Schema<ISettings>(
     },
     esignatureUseIn: {
       type: [String],
+      default: [],
+    },
+    // Default Particulars
+    defaultParticulars: {
+      type: [
+        {
+          particularName: { type: String, trim: true },
+          unit: { type: String, trim: true },
+          quantity: { type: Number, default: 0 },
+          rate: { type: Number, default: 0 },
+        },
+      ],
       default: [],
     },
   },

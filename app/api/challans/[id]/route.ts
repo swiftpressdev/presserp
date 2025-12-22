@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+// Import models to ensure they're registered
+import '@/models/Client';
+import '@/models/Job';
 import Challan from '@/models/Challan';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
@@ -12,8 +15,10 @@ const challanParticularSchema = z.object({
 
 const updateChallanSchema = z.object({
   challanDate: z.string().min(1, 'Challan date is required'),
+  clientId: z.string().optional(),
+  jobId: z.string().optional(),
   destination: z.string().min(1, 'Destination is required'),
-  estimateReferenceNo: z.string().min(1, 'Estimate reference number is required'),
+  remarks: z.string().optional(),
   particulars: z.array(challanParticularSchema).min(1, 'At least one particular is required'),
 });
 
@@ -27,7 +32,9 @@ export async function GET(
     const adminId = getAdminId(user);
     const { id } = await params;
 
-    const challan = await Challan.findOne({ _id: id, adminId });
+    const challan = await Challan.findOne({ _id: id, adminId })
+      .populate('clientId', 'clientName address')
+      .populate('jobId', 'jobNo jobName');
 
     if (!challan) {
       return NextResponse.json(
@@ -69,8 +76,10 @@ export async function PUT(
       { _id: id, adminId },
       {
         challanDate: validatedData.challanDate,
+        clientId: validatedData.clientId || undefined,
+        jobId: validatedData.jobId || undefined,
         destination: validatedData.destination,
-        estimateReferenceNo: validatedData.estimateReferenceNo,
+        remarks: validatedData.remarks || undefined,
         particulars: validatedData.particulars,
         totalUnits,
       },

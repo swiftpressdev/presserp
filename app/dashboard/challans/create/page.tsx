@@ -5,22 +5,40 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import ChallanParticularsTable, { ChallanParticular } from '@/components/ChallanParticularsTable';
+import SearchableMultiSelect from '@/components/SearchableMultiSelect';
 import { getCurrentBSDate } from '@/lib/dateUtils';
 import toast from 'react-hot-toast';
+
+interface Client {
+  _id: string;
+  clientName: string;
+  address?: string;
+}
+
+interface Job {
+  _id: string;
+  jobNo: string;
+  jobName: string;
+  clientId: string | { _id: string; clientName: string };
+}
 
 export default function CreateChallanPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [formData, setFormData] = useState({
     challanDate: getCurrentBSDate(),
+    clientId: '',
+    jobId: '',
     destination: '',
-    estimateReferenceNo: '',
+    remarks: '',
   });
   const [particulars, setParticulars] = useState<ChallanParticular[]>([
     { sn: 1, particulars: '', quantity: 0 },
   ]);
-  const [loadingParticulars, setLoadingParticulars] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -28,41 +46,66 @@ export default function CreateChallanPage() {
     }
   }, [user, authLoading, router]);
 
-  const handleGetParticulars = async () => {
-    if (!formData.estimateReferenceNo.trim()) {
-      toast.error('Please enter an estimate reference number');
-      return;
+  useEffect(() => {
+    if (user) {
+      fetchDropdownData();
     }
+  }, [user]);
 
-    setLoadingParticulars(true);
+  const fetchDropdownData = async () => {
     try {
-      const response = await fetch('/api/estimates/by-number', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          estimateNumber: formData.estimateReferenceNo,
-        }),
-      });
+      const [clientsRes, jobsRes] = await Promise.all([
+        fetch('/api/clients'),
+        fetch('/api/jobs'),
+      ]);
 
-      const data = await response.json();
+      const [clientsData, jobsData] = await Promise.all([
+        clientsRes.json(),
+        jobsRes.json(),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch estimate particulars');
+      if (!clientsRes.ok) {
+        throw new Error(clientsData.error || 'Failed to fetch clients');
       }
 
-      if (data.estimate && data.estimate.particulars) {
-        setParticulars(data.estimate.particulars);
-        toast.success('Particulars loaded successfully');
-      } else {
-        toast.error('No particulars found for this estimate');
+      if (!jobsRes.ok) {
+        throw new Error(jobsData.error || 'Failed to fetch jobs');
       }
+
+      setClients(clientsData.clients || []);
+      setAllJobs(jobsData.jobs || []);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch estimate particulars');
-    } finally {
-      setLoadingParticulars(false);
+      console.error('Failed to fetch dropdown data:', error);
+      toast.error(error.message || 'Failed to load data');
     }
+  };
+
+  const handleClientChange = (selectedClientIds: string[]) => {
+    const clientId = selectedClientIds.length > 0 ? selectedClientIds[0] : '';
+    const selectedClient = clients.find((c) => c._id === clientId);
+    
+    setFormData({
+      ...formData,
+      clientId,
+      jobId: '', // Reset job when client changes
+      destination: selectedClient?.address || '',
+    });
+
+    // Filter jobs by selected client
+    if (clientId) {
+      const filtered = allJobs.filter((job) => {
+        const jobClientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
+        return jobClientId === clientId;
+      });
+      setFilteredJobs(filtered);
+    } else {
+      setFilteredJobs([]);
+    }
+  };
+
+  const handleJobChange = (selectedJobIds: string[]) => {
+    const jobId = selectedJobIds.length > 0 ? selectedJobIds[0] : '';
+    setFormData({ ...formData, jobId });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +135,11 @@ export default function CreateChallanPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          challanDate: formData.challanDate,
+          clientId: formData.clientId || undefined,
+          jobId: formData.jobId || undefined,
+          destination: formData.destination,
+          remarks: formData.remarks || undefined,
           particulars: indexedParticulars,
         }),
       });
@@ -144,6 +191,37 @@ export default function CreateChallanPage() {
             </div>
 
             <div>
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={handleClientChange}
+                label="Client Name"
+                placeholder="Search client..."
+                required
+                emptyMessage="No clients available"
+              />
+            </div>
+
+            <div>
+              <SearchableMultiSelect
+                options={filteredJobs.map((job) => ({
+                  value: job._id,
+                  label: job.jobNo,
+                  sublabel: job.jobName,
+                }))}
+                selectedValues={formData.jobId ? [formData.jobId] : []}
+                onChange={handleJobChange}
+                label="Job Number"
+                placeholder="Search job..."
+                emptyMessage={formData.clientId ? 'No jobs available for this client' : 'Please select a client first'}
+                disabled={!formData.clientId}
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">
                 Destination <span className="text-red-500">*</span>
               </label>
@@ -153,31 +231,8 @@ export default function CreateChallanPage() {
                 value={formData.destination}
                 onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Auto-filled from client address"
               />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Estimate Reference No <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  required
-                  value={formData.estimateReferenceNo}
-                  onChange={(e) => setFormData({ ...formData, estimateReferenceNo: e.target.value })}
-                  className="mt-1 flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter estimate number"
-                />
-                <button
-                  type="button"
-                  onClick={handleGetParticulars}
-                  disabled={loadingParticulars}
-                  className="mt-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {loadingParticulars ? 'Loading...' : 'Get Particulars Detail'}
-                </button>
-              </div>
             </div>
           </div>
 
@@ -186,6 +241,19 @@ export default function CreateChallanPage() {
             <ChallanParticularsTable
               particulars={particulars}
               onChange={setParticulars}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Remarks
+            </label>
+            <textarea
+              value={formData.remarks}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              placeholder="Enter remarks (optional)"
             />
           </div>
 

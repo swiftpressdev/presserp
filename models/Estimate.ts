@@ -9,10 +9,17 @@ export interface IParticular {
   amount: number;
 }
 
+export interface IDeliveryNote {
+  date: string;
+  challanNo: string;
+  quantity: number;
+  remarks?: string;
+}
+
 export interface IEstimate extends Document {
   adminId: Types.ObjectId | string;
   clientId: Types.ObjectId | string;
-  jobId: Types.ObjectId | string;
+  jobId: Types.ObjectId | string | (Types.ObjectId | string)[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -31,6 +38,7 @@ export interface IEstimate extends Document {
   grandTotal: number;
   amountInWords?: string;
   remarks?: string;
+  deliveryNotes?: IDeliveryNote[];
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +71,29 @@ const ParticularSchema = new Schema<IParticular>(
   { _id: false }
 );
 
+const DeliveryNoteSchema = new Schema<IDeliveryNote>(
+  {
+    date: {
+      type: String,
+      required: true,
+    },
+    challanNo: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
 const EstimateSchema = new Schema<IEstimate>(
   {
     ...baseSchemaFields,
@@ -72,7 +103,7 @@ const EstimateSchema = new Schema<IEstimate>(
       required: true,
     },
     jobId: {
-      type: Schema.Types.ObjectId,
+      type: [Schema.Types.ObjectId],
       ref: 'Job',
       required: true,
     },
@@ -147,6 +178,10 @@ const EstimateSchema = new Schema<IEstimate>(
     remarks: {
       type: String,
       trim: true,
+    },
+    deliveryNotes: {
+      type: [DeliveryNoteSchema],
+      default: [],
     },
   },
   baseSchemaOptions

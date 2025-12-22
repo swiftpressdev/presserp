@@ -10,11 +10,13 @@ import { PaperType } from '@/lib/types';
 
 interface Paper {
   _id: string;
-  paperName: string;
+  clientName: string;
   paperType: string;
   paperTypeOther?: string;
   paperSize: string;
   paperWeight: string;
+  units: string;
+  originalStock: number;
 }
 
 export default function ViewPaperPage() {
@@ -83,7 +85,7 @@ export default function ViewPaperPage() {
     );
   }
 
-  const displayPaperType = paper.paperType === PaperType.OTHERS && paper.paperTypeOther
+  const displayPaperType = paper.paperType === PaperType.OTHER && paper.paperTypeOther
     ? paper.paperTypeOther
     : paper.paperType;
 
@@ -93,6 +95,12 @@ export default function ViewPaperPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">View Paper</h1>
           <div className="flex gap-2">
+            <Link
+              href={`/dashboard/papers/stock/${paperId}`}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+            >
+              View Stock
+            </Link>
             <Link
               href={`/dashboard/papers/${paperId}`}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
@@ -111,9 +119,9 @@ export default function ViewPaperPage() {
         <div className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Paper Name</label>
+              <label className="block text-sm font-medium text-gray-700">Client Name</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {paper.paperName}
+                {paper.clientName}
               </div>
             </div>
 
@@ -135,6 +143,20 @@ export default function ViewPaperPage() {
               <label className="block text-sm font-medium text-gray-700">Paper Weight</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
                 {paper.paperWeight}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Units</label>
+              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                {paper.units}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Original Stock</label>
+              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                {paper.originalStock}
               </div>
             </div>
           </div>

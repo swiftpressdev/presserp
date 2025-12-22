@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import ParticularsTable, { Particular } from '@/components/ParticularsTable';
+import DeliveryNotesTable, { DeliveryNote } from '@/components/DeliveryNotesTable';
+import SearchableMultiSelect from '@/components/SearchableMultiSelect';
 import { getCurrentBSDate } from '@/lib/dateUtils';
 import toast from 'react-hot-toast';
 
@@ -36,7 +38,7 @@ export default function CreateEstimatePage() {
 
   const [formData, setFormData] = useState({
     clientId: '',
-    jobId: '',
+    jobIds: [] as string[],
     estimateDate: getCurrentBSDate(),
     remarks: '',
   });
@@ -52,9 +54,11 @@ export default function CreateEstimatePage() {
   const [particulars, setParticulars] = useState<Particular[]>([
     { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
   ]);
+  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [vatType, setVatType] = useState<'excluded' | 'included' | 'none'>('none');
   const [hasDiscount, setHasDiscount] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [loadingDefaults, setLoadingDefaults] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -97,7 +101,7 @@ export default function CreateEstimatePage() {
   };
 
   const handleClientChange = (clientId: string) => {
-    setFormData({ ...formData, clientId, jobId: '' });
+    setFormData({ ...formData, clientId, jobIds: [] });
     setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
 
     const filtered = allJobs.filter((job) => {
@@ -108,27 +112,80 @@ export default function CreateEstimatePage() {
     setFilteredJobs(filtered);
   };
 
-  const handleJobChange = (jobId: string) => {
-    setFormData({ ...formData, jobId });
-
-    const selectedJob = allJobs.find((job) => job._id === jobId);
-    if (selectedJob) {
-      const finishSize = selectedJob.bookSize === 'Other' && selectedJob.bookSizeOther 
-        ? selectedJob.bookSizeOther 
-        : selectedJob.bookSize || '';
+  const updateJobDetails = (jobIds: string[]) => {
+    // Sum up pages from all selected jobs
+    const selectedJobs = allJobs.filter((job) => jobIds.includes(job._id));
+    
+    if (selectedJobs.length > 0) {
+      const totalBWPages = selectedJobs.reduce((sum, job) => sum + (job.totalBWPages || 0), 0);
+      const totalColorPages = selectedJobs.reduce((sum, job) => sum + (job.totalColorPages || 0), 0);
+      const totalPages = selectedJobs.reduce((sum, job) => sum + (job.totalPages || 0), 0);
+      
+      // Get paperSize from first job (assuming all jobs have same paper size)
+      const paperSize = selectedJobs[0]?.paperSize || '';
+      
+      // Get finishSize from first job
+      const firstJob = selectedJobs[0];
+      const finishSize = firstJob?.bookSize === 'Other' && firstJob?.bookSizeOther 
+        ? firstJob.bookSizeOther 
+        : firstJob?.bookSize || '';
       
       setJobDetails({
-        totalBWPages: selectedJob.totalBWPages,
-        totalColorPages: selectedJob.totalColorPages,
-        totalPages: selectedJob.totalPages,
-        paperSize: selectedJob.paperSize,
+        totalBWPages,
+        totalColorPages,
+        totalPages,
+        paperSize,
         finishSize,
       });
+    } else {
+      setJobDetails({ totalBWPages: 0, totalColorPages: 0, totalPages: 0, paperSize: '', finishSize: '' });
+    }
+  };
+
+  const handleLoadDefaultParticulars = async () => {
+    setLoadingDefaults(true);
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch default particulars');
+      }
+
+      const defaultParticulars = data.settings?.defaultParticulars || [];
+
+      if (defaultParticulars.length === 0) {
+        toast.error('No default particulars found in settings. Please add them in Settings page first.');
+        return;
+      }
+
+      // Convert default particulars to Particular format
+      const newParticulars: Particular[] = defaultParticulars.map((dp: any, index: number) => ({
+        sn: particulars.length + index + 1,
+        particulars: `${dp.particularName}${dp.unit ? ` (${dp.unit})` : ''}`,
+        quantity: dp.quantity || 0,
+        rate: dp.rate || 0,
+        amount: Number(((dp.quantity || 0) * (dp.rate || 0)).toFixed(2)),
+      }));
+
+      // Add to existing particulars (append, don't replace)
+      setParticulars([...particulars, ...newParticulars]);
+      toast.success(`Loaded ${newParticulars.length} default particular(s)`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load default particulars');
+    } finally {
+      setLoadingDefaults(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate job selection
+    if (formData.jobIds.length === 0) {
+      toast.error('Please select at least one job');
+      return;
+    }
 
     // Filter out empty rows
     const validParticulars = particulars.filter(
@@ -159,7 +216,9 @@ export default function CreateEstimatePage() {
         },
         body: JSON.stringify({
           ...formData,
+          jobId: formData.jobIds, // Send as array
           particulars: indexedParticulars,
+          deliveryNotes: deliveryNotes.filter((note) => note.challanNo && note.quantity > 0),
           vatType,
           hasDiscount,
           discountPercentage: hasDiscount ? discountPercentage : 0,
@@ -216,33 +275,23 @@ export default function CreateEstimatePage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Job Number <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.jobId}
-                onChange={(e) => handleJobChange(e.target.value)}
+            <div className="md:col-span-2">
+              <SearchableMultiSelect
+                options={filteredJobs.map((job) => ({
+                  value: job._id,
+                  label: job.jobNo,
+                  sublabel: job.jobName,
+                }))}
+                selectedValues={formData.jobIds}
+                onChange={(newJobIds) => {
+                  setFormData({ ...formData, jobIds: newJobIds });
+                  updateJobDetails(newJobIds);
+                }}
+                label="Job Numbers"
+                placeholder="Search jobs by number or name..."
                 disabled={!formData.clientId}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-              >
-                <option value="">Select Job</option>
-                {filteredJobs.map((job) => (
-                  <option key={job._id} value={job._id}>
-                    {job.jobNo} - {job.jobName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Job Name</label>
-              <input
-                type="text"
-                disabled
-                value={formData.jobId ? (allJobs.find(j => j._id === formData.jobId)?.jobName || '') : ''}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                required={true}
+                emptyMessage={formData.clientId ? 'No jobs available for this client' : 'Please select a client first'}
               />
             </div>
 
@@ -312,7 +361,17 @@ export default function CreateEstimatePage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Particulars</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Particulars</h2>
+              <button
+                type="button"
+                onClick={handleLoadDefaultParticulars}
+                disabled={loadingDefaults}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingDefaults ? 'Loading...' : 'Load Default Particulars'}
+              </button>
+            </div>
             <ParticularsTable
               particulars={particulars}
               onChange={setParticulars}
@@ -335,6 +394,14 @@ export default function CreateEstimatePage() {
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter any additional remarks or notes..."
+            />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Notes</h2>
+            <DeliveryNotesTable
+              deliveryNotes={deliveryNotes}
+              onChange={setDeliveryNotes}
             />
           </div>
 

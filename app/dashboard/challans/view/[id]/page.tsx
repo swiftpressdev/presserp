@@ -13,8 +13,10 @@ interface Challan {
   _id: string;
   challanNumber: string;
   challanDate: string;
+  clientId?: { _id: string; clientName: string } | string;
+  jobId?: { _id: string; jobNo: string; jobName: string } | string;
   destination: string;
-  estimateReferenceNo: string;
+  remarks?: string;
   particulars: ChallanParticular[];
   totalUnits: number;
 }
@@ -131,6 +133,24 @@ export default function ViewChallanPage() {
               </div>
             </div>
 
+            {challan.clientId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Client Name</label>
+                <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                  {typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A'}
+                </div>
+              </div>
+            )}
+
+            {challan.jobId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Job Number</label>
+                <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                  {typeof challan.jobId === 'object' ? `${challan.jobId.jobNo} - ${challan.jobId.jobName}` : 'N/A'}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Destination</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
@@ -138,12 +158,14 @@ export default function ViewChallanPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Estimate Reference No</label>
+            {challan.remarks && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Remarks</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {challan.estimateReferenceNo}
+                  {challan.remarks}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div>
