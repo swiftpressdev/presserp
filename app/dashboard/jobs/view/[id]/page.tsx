@@ -114,7 +114,12 @@ export default function ViewJobPage() {
   }
 
   const clientName = typeof job.clientId === 'object' ? job.clientId.clientName : '-';
-  const paperName = typeof job.paperId === 'object' ? job.paperId.paperName : '-';
+  const paperName = typeof job.paperId === 'object' ? (job.paperId as any).paperName : '-';
+  const paperType = typeof job.paperId === 'object' 
+    ? ((job.paperId as any).paperType === 'Other' && (job.paperId as any).paperTypeOther 
+        ? (job.paperId as any).paperTypeOther 
+        : (job.paperId as any).paperType)
+    : ((job as any).paperType || '-');
   const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '-';
   const relatedToJobNo = job.relatedToJobId
     ? typeof job.relatedToJobId === 'object'
@@ -201,7 +206,7 @@ export default function ViewJobPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">Paper Type</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {paperName}
+                {paperType}
               </div>
             </div>
 

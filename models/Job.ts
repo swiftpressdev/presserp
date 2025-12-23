@@ -23,11 +23,14 @@ export interface IJob extends Document {
   deliveryDate: string;
   jobTypes: JobType[];
   quantity: number;
-  paperFrom?: 'customer' | 'company';
+  paperBy?: 'customer' | 'company';
+  paperFrom?: string;
   paperFromCustom?: string;
   paperIds?: Types.ObjectId[] | string[];
   paperId: Types.ObjectId | string;
+  paperType?: string;
   paperSize: string;
+  paperWeight?: string;
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -94,9 +97,13 @@ const JobSchema = new Schema<IJob>(
       type: Number,
       required: true,
     },
-    paperFrom: {
+    paperBy: {
       type: String,
       enum: ['customer', 'company'],
+    },
+    paperFrom: {
+      type: String,
+      trim: true,
     },
     paperFromCustom: {
       type: String,
@@ -111,9 +118,17 @@ const JobSchema = new Schema<IJob>(
       ref: 'Paper',
       required: false,
     },
+    paperType: {
+      type: String,
+      trim: true,
+    },
     paperSize: {
       type: String,
       required: true,
+      trim: true,
+    },
+    paperWeight: {
+      type: String,
       trim: true,
     },
     totalBWPages: {

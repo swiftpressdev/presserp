@@ -33,6 +33,8 @@ interface Job {
   deliveryDate: string;
   jobTypes: string[];
   quantity: number;
+  paperFrom?: 'customer' | 'company';
+  paperFromCustom?: string;
   paperSize: string;
   totalBWPages: number;
   totalColorPages: number;
@@ -121,7 +123,12 @@ export default function JobsPage() {
   const handleExportPDF = async (job: Job) => {
     try {
       const clientName = typeof job.clientId === 'object' ? job.clientId.clientName : '';
-      const paperName = typeof job.paperId === 'object' ? job.paperId.paperName : '';
+      const clientAddress = typeof job.clientId === 'object' ? (job.clientId as any).address : '';
+      const paperName = typeof job.paperId === 'object' ? (job.paperId as any).paperName : '';
+      const paperType = typeof job.paperId === 'object' ? (job.paperId as any).paperType : '';
+      const paperTypeOther = typeof job.paperId === 'object' ? (job.paperId as any).paperTypeOther : '';
+      // Get paperType from job if available, otherwise from paperId
+      const finalPaperType = (job as any).paperType || (paperType === 'Other' && paperTypeOther ? paperTypeOther : paperType) || paperName || '-';
       const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '';
       const relatedToJobNo = typeof job.relatedToJobId === 'object' ? job.relatedToJobId.jobNo : undefined;
       
@@ -134,12 +141,18 @@ export default function JobsPage() {
         jobNo: job.jobNo,
         jobName: job.jobName,
         clientName,
+        clientAddress,
         jobDate: formatBSDate(job.jobDate),
         deliveryDate: formatBSDate(job.deliveryDate),
         jobTypes: formattedJobTypes,
         quantity: job.quantity,
+        paperBy: (job as any).paperBy || job.paperFrom,
+        paperFrom: (job as any).paperFrom || '',
+        paperFromCustom: job.paperFromCustom,
         paperName,
+        paperType: finalPaperType,
         paperSize: job.paperSize,
+        paperWeight: (job as any).paperWeight || '',
         totalBWPages: job.totalBWPages,
         totalColorPages: job.totalColorPages,
         totalPages: job.totalPages,
