@@ -65,12 +65,14 @@ export default function EditJobPage() {
     deliveryDate: '',
     jobTypes: [] as JobType[],
     quantity: 1,
-    paperFrom: '' as 'customer' | 'company' | '',
+    paperBy: '' as 'customer' | 'company' | '',
+    paperFrom: '',
     paperFromCustom: '',
     paperIds: [] as string[],
     paperId: '',
     paperType: '',
     paperSize: '',
+    paperWeight: '',
     totalBWPages: 0,
     totalColorPages: 0,
     pageColor: '' as PageColorType | '',
@@ -145,11 +147,24 @@ export default function EditJobPage() {
       }
 
       const job = data.job;
-      const clientId = typeof job.clientId === 'object' ? job.clientId._id.toString() : job.clientId.toString();
-      const paperId = typeof job.paperId === 'object' ? job.paperId._id.toString() : job.paperId.toString();
-      const machineId = typeof job.machineId === 'object' ? job.machineId._id.toString() : job.machineId.toString();
-      const relatedToJobId = job.relatedToJobId ? (typeof job.relatedToJobId === 'object' ? job.relatedToJobId._id.toString() : job.relatedToJobId.toString()) : '';
-      const paperIds = job.paperIds ? (Array.isArray(job.paperIds) ? job.paperIds.map((p: any) => typeof p === 'object' ? p._id.toString() : p.toString()) : []) : [];
+      const clientId = job.clientId 
+        ? (typeof job.clientId === 'object' ? job.clientId._id?.toString() || '' : job.clientId?.toString() || '')
+        : '';
+      const paperId = job.paperId 
+        ? (typeof job.paperId === 'object' ? job.paperId._id?.toString() || '' : job.paperId?.toString() || '')
+        : '';
+      const machineId = job.machineId 
+        ? (typeof job.machineId === 'object' ? job.machineId._id?.toString() || '' : job.machineId?.toString() || '')
+        : '';
+      const relatedToJobId = job.relatedToJobId 
+        ? (typeof job.relatedToJobId === 'object' ? job.relatedToJobId._id?.toString() || '' : job.relatedToJobId?.toString() || '')
+        : '';
+      const paperIds = job.paperIds && Array.isArray(job.paperIds)
+        ? job.paperIds
+            .filter((p: any) => p != null) // Filter out null/undefined
+            .map((p: any) => typeof p === 'object' && p._id ? p._id.toString() : (p?.toString() || ''))
+            .filter((id: string) => id !== '') // Filter out empty strings
+        : [];
 
       setFormData({
         jobName: job.jobName || '',
@@ -158,12 +173,14 @@ export default function EditJobPage() {
         deliveryDate: job.deliveryDate || '',
         jobTypes: job.jobTypes || [],
         quantity: job.quantity || 1,
-        paperFrom: job.paperFrom || '',
+        paperBy: (job as any).paperBy || job.paperFrom || '',
+        paperFrom: (job as any).paperFrom || '',
         paperFromCustom: job.paperFromCustom || '',
         paperIds,
         paperId,
         paperType: job.paperType || '',
         paperSize: job.paperSize || '',
+        paperWeight: (job as any).paperWeight || '',
         totalBWPages: job.totalBWPages || 0,
         totalColorPages: job.totalColorPages || 0,
         pageColor: job.pageColor || '',
@@ -227,17 +244,21 @@ export default function EditJobPage() {
   const handlePaperIdsChange = (selectedPaperIds: string[]) => {
     const selectedPapers = papers.filter((p) => selectedPaperIds.includes(p._id));
     
-    // Auto-populate paperType and paperSize (comma-separated for multiple)
+    // Auto-populate paperType, paperSize, paperFrom (client names), and paperWeight (comma-separated for multiple)
     const paperTypes = selectedPapers.map((p) => 
       p.paperType === 'Other' && p.paperTypeOther ? p.paperTypeOther : p.paperType
     );
     const paperSizes = selectedPapers.map((p) => p.paperSize);
+    const paperFromClientNames = selectedPapers.map((p) => p.clientName);
+    const paperWeights = selectedPapers.map((p) => p.paperWeight);
     
     setFormData({
       ...formData,
       paperIds: selectedPaperIds,
       paperType: paperTypes.join(', '),
       paperSize: paperSizes.join(', '),
+      paperFrom: paperFromClientNames.join(', '),
+      paperWeight: paperWeights.join(', '),
     });
   };
 
@@ -254,11 +275,13 @@ export default function EditJobPage() {
     try {
       const submitData = {
         ...formData,
-        paperFrom: formData.paperFrom || undefined,
-        paperFromCustom: formData.paperFrom === 'company' ? formData.paperFromCustom : undefined,
-        paperIds: formData.paperFrom === 'customer' && formData.paperIds.length > 0 ? formData.paperIds : undefined,
-        paperId: formData.paperFrom === 'customer' ? undefined : formData.paperId || undefined,
-        paperType: formData.paperFrom === 'customer' ? formData.paperType : undefined,
+        paperBy: formData.paperBy || undefined,
+        paperFrom: formData.paperBy === 'customer' ? formData.paperFrom : undefined,
+        paperFromCustom: formData.paperBy === 'company' ? formData.paperFromCustom : undefined,
+        paperIds: formData.paperBy === 'customer' && formData.paperIds.length > 0 ? formData.paperIds : undefined,
+        paperId: formData.paperBy === 'customer' ? undefined : formData.paperId || undefined,
+        paperType: formData.paperBy === 'customer' ? formData.paperType : undefined,
+        paperWeight: formData.paperBy === 'customer' ? formData.paperWeight : undefined,
         pageColor: formData.pageColor || undefined,
         pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
         bookSize: formData.bookSize || undefined,
@@ -424,33 +447,33 @@ export default function EditJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Paper From <span className="text-red-500">*</span>
+                Paper By <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    name="paperFrom"
+                    name="paperBy"
                     value="customer"
-                    checked={formData.paperFrom === 'customer'}
-                    onChange={(e) => setFormData({ ...formData, paperFrom: e.target.value as 'customer', paperIds: [] })}
+                    checked={formData.paperBy === 'customer'}
+                    onChange={(e) => setFormData({ ...formData, paperBy: e.target.value as 'customer', paperIds: [], paperFrom: '', paperWeight: '' })}
                   />
                   <span>Customer</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
-                    name="paperFrom"
+                    name="paperBy"
                     value="company"
-                    checked={formData.paperFrom === 'company'}
-                    onChange={(e) => setFormData({ ...formData, paperFrom: e.target.value as 'company', paperFromCustom: '', paperId: '' })}
+                    checked={formData.paperBy === 'company'}
+                    onChange={(e) => setFormData({ ...formData, paperBy: e.target.value as 'company', paperFromCustom: '', paperId: '', paperFrom: '', paperWeight: '' })}
                   />
                   <span>Company</span>
                 </label>
               </div>
             </div>
 
-            {formData.paperFrom === 'customer' && (
+            {formData.paperBy === 'customer' && (
               <>
                 <div className="md:col-span-2">
                   <SearchableMultiSelect
@@ -474,7 +497,8 @@ export default function EditJobPage() {
                     required
                     value={formData.paperType}
                     onChange={(e) => setFormData({ ...formData, paperType: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    disabled={formData.paperIds.length > 0}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Auto-populated from selected papers"
                   />
                 </div>
@@ -487,14 +511,43 @@ export default function EditJobPage() {
                     required
                     value={formData.paperSize}
                     onChange={(e) => setFormData({ ...formData, paperSize: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    disabled={formData.paperIds.length > 0}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="Auto-populated from selected papers"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Paper From <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.paperFrom}
+                    onChange={(e) => setFormData({ ...formData, paperFrom: e.target.value })}
+                    disabled={formData.paperIds.length > 0}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="Auto-populated from selected papers"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Paper Weight <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.paperWeight}
+                    onChange={(e) => setFormData({ ...formData, paperWeight: e.target.value })}
+                    disabled={formData.paperIds.length > 0}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Auto-populated from selected papers"
                   />
                 </div>
               </>
             )}
 
-            {formData.paperFrom === 'company' && (
+            {formData.paperBy === 'company' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Page From (Custom) <span className="text-red-500">*</span>
@@ -508,41 +561,6 @@ export default function EditJobPage() {
                   placeholder="Enter custom page from"
                 />
               </div>
-            )}
-
-            {formData.paperFrom === '' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Paper Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    value={formData.paperId}
-                    onChange={(e) => handlePaperChange(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Paper</option>
-                    {papers.map((paper) => (
-                      <option key={paper._id} value={paper._id}>
-                        {paper.clientName} - {paper.paperSize} - {paper.paperWeight}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Paper Size <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.paperSize}
-                    onChange={(e) => setFormData({ ...formData, paperSize: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </>
             )}
 
             <div>
@@ -670,6 +688,45 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, totalFarma: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter total farma"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Plate By <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="plateBy"
+                    value={PlateBy.COMPANY}
+                    checked={formData.plateBy === PlateBy.COMPANY}
+                    onChange={(e) => setFormData({ ...formData, plateBy: e.target.value as PlateBy })}
+                  />
+                  <span>Company</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="plateBy"
+                    value={PlateBy.CUSTOMER}
+                    checked={formData.plateBy === PlateBy.CUSTOMER}
+                    onChange={(e) => setFormData({ ...formData, plateBy: e.target.value as PlateBy })}
+                  />
+                  <span>Customer</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Plate From</label>
+              <input
+                type="text"
+                value={formData.plateFrom}
+                onChange={(e) => setFormData({ ...formData, plateFrom: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter plate from"
               />
             </div>
 

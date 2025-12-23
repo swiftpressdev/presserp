@@ -29,12 +29,14 @@ const updateJobSchema = z.object({
   deliveryDate: z.string().min(1, 'Delivery date is required'),
   jobTypes: z.array(z.nativeEnum(JobType)).min(1, 'At least one job type is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
-  paperFrom: z.enum(['customer', 'company']).optional(),
+  paperBy: z.enum(['customer', 'company']).optional(),
+  paperFrom: z.string().optional(),
   paperFromCustom: z.string().optional(),
   paperIds: z.array(z.string()).optional(),
   paperId: z.string().optional(),
   paperType: z.string().optional(),
   paperSize: z.string().min(1, 'Paper size is required'),
+  paperWeight: z.string().optional(),
   totalBWPages: z.number().min(0),
   totalColorPages: z.number().min(0),
   pageColor: z.nativeEnum(PageColorType).optional(),
@@ -60,21 +62,21 @@ const updateJobSchema = z.object({
   remarks: z.string().optional(),
   specialInstructions: z.string().optional(),
 }).refine((data) => {
-  // If paperFrom is 'customer' and paperIds are provided, paperType is required
-  if (data.paperFrom === 'customer' && data.paperIds && data.paperIds.length > 0) {
+  // If paperBy is 'customer' and paperIds are provided, paperType is required
+  if (data.paperBy === 'customer' && data.paperIds && data.paperIds.length > 0) {
     return !!(data.paperType && data.paperType.trim().length > 0);
   }
-  // If paperFrom is 'company' or not set, paperId is required
-  if (data.paperFrom !== 'customer') {
+  // If paperBy is 'company' or not set, paperId is required
+  if (data.paperBy !== 'customer') {
     return !!(data.paperId && data.paperId.trim().length > 0);
   }
-  // If paperFrom is not set, paperId is required
-  if (!data.paperFrom) {
+  // If paperBy is not set, paperId is required
+  if (!data.paperBy) {
     return !!(data.paperId && data.paperId.trim().length > 0);
   }
   return true;
 }, (data) => {
-  if (data.paperFrom === 'customer' && data.paperIds && data.paperIds.length > 0) {
+  if (data.paperBy === 'customer' && data.paperIds && data.paperIds.length > 0) {
     return {
       message: 'Paper type is required when selecting customer papers',
       path: ['paperType'],
@@ -97,9 +99,9 @@ export async function GET(
     const { id } = await params;
 
     const job = await Job.findOne({ _id: id, adminId })
-      .populate('clientId', 'clientName')
-      .populate('paperId', 'clientName paperType paperSize paperWeight')
-      .populate('paperIds', 'clientName paperType paperSize paperWeight')
+      .populate('clientId', 'clientName address')
+      .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight')
+      .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight')
       .populate('machineId', 'equipmentName')
       .populate('relatedToJobId', 'jobNo jobName');
 
@@ -165,13 +167,14 @@ export async function PUT(
         totalPages,
       },
       { new: true }
-    ).populate('clientId', 'clientName')
-     .populate('paperId', 'paperName')
-     .populate('paperIds', 'clientName paperType paperSize paperWeight')
-     .populate('machineId', 'equipmentName');
+    ).populate('clientId', 'clientName address')
+     .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight')
+     .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight')
+     .populate('machineId', 'equipmentName')
+     .populate('relatedToJobId', 'jobNo jobName');
 
-    // Deduct stock if paperFrom is 'customer' and paperIds are provided and changed (company papers being used)
-    if (validatedData.paperFrom === 'customer' && validatedData.paperIds && validatedData.paperIds.length > 0) {
+    // Deduct stock if paperBy is 'customer' and paperIds are provided and changed (company papers being used)
+    if (validatedData.paperBy === 'customer' && validatedData.paperIds && validatedData.paperIds.length > 0) {
       const existingPaperIds = existingJob.paperIds 
         ? (Array.isArray(existingJob.paperIds) ? existingJob.paperIds.map((p: any) => p.toString()) : [])
         : [];
