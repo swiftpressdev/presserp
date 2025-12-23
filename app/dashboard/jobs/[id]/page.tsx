@@ -570,11 +570,11 @@ export default function EditJobPage() {
               <input
                 type="number"
                 required
-                min="1"
-                value={formData.totalBWPages === 0 ? '' : formData.totalBWPages}
+                min="0"
+                value={formData.totalBWPages}
                 onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                  setFormData({ ...formData, totalBWPages: value < 1 ? 1 : value });
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                  setFormData({ ...formData, totalBWPages: isNaN(value) ? 0 : value });
                 }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
@@ -587,11 +587,11 @@ export default function EditJobPage() {
               <input
                 type="number"
                 required
-                min="1"
-                value={formData.totalColorPages === 0 ? '' : formData.totalColorPages}
+                min="0"
+                value={formData.totalColorPages}
                 onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                  setFormData({ ...formData, totalColorPages: value < 1 ? 1 : value });
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                  setFormData({ ...formData, totalColorPages: isNaN(value) ? 0 : value });
                 }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
