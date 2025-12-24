@@ -9,6 +9,17 @@ import toast from 'react-hot-toast';
 import { formatBSDate } from '@/lib/dateUtils';
 import { JobType } from '@/lib/types';
 
+interface PaperDetail {
+  paperId: string;
+  type: string;
+  size: string;
+  weight: string;
+  paperFrom: string;
+  unit: string;
+  issuedQuantity: number;
+  wastage: number;
+}
+
 interface Job {
   _id: string;
   jobNo: string;
@@ -21,7 +32,11 @@ interface Job {
   deliveryDate: string;
   jobTypes: string[];
   quantity: number;
+  paperBy?: 'customer' | 'company';
+  paperFrom?: string;
+  paperFromCustom?: string;
   paperSize: string;
+  paperDetails?: PaperDetail[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -203,19 +218,100 @@ export default function ViewJobPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Paper Type</label>
-              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {paperType}
+            {job.paperBy && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Paper By</label>
+                <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                  {job.paperBy === 'customer' ? 'Customer' : 'Company'}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Paper Size</label>
-              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {job.paperSize}
+            {job.paperBy === 'company' && job.paperFromCustom && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Page From (Custom)</label>
+                <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                  {job.paperFromCustom}
+                </div>
               </div>
-            </div>
+            )}
+
+            {job.paperBy === 'customer' && job.paperDetails && job.paperDetails.length > 0 ? (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Paper Details</label>
+                <div className="space-y-4">
+                  {job.paperDetails.map((paperDetail, index) => (
+                    <div key={paperDetail.paperId || index} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Paper {index + 1}: {paperDetail.paperFrom} - {paperDetail.size} - {paperDetail.weight}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Type</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.type}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Size</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.size}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Weight</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.weight}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Paper From</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.paperFrom}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Unit</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.unit}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Issued Quantity</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.issuedQuantity}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Wastage</label>
+                          <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                            {paperDetail.wastage}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Paper Type</label>
+                  <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                    {paperType}
+                  </div>
+                </div>
+
+                {job.paperSize && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Paper Size</label>
+                    <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                      {job.paperSize}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Total Pages</label>
