@@ -153,6 +153,7 @@ export default function JobsPage() {
         paperType: finalPaperType,
         paperSize: job.paperSize,
         paperWeight: (job as any).paperWeight || '',
+        paperDetails: (job as any).paperDetails || undefined,
         totalBWPages: job.totalBWPages,
         totalColorPages: job.totalColorPages,
         totalPages: job.totalPages,

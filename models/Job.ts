@@ -31,6 +31,16 @@ export interface IJob extends Document {
   paperType?: string;
   paperSize: string;
   paperWeight?: string;
+  paperDetails?: Array<{
+    paperId: string;
+    type: string;
+    size: string;
+    weight: string;
+    paperFrom: string;
+    unit: string;
+    issuedQuantity: number;
+    wastage: number;
+  }>;
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -124,13 +134,51 @@ const JobSchema = new Schema<IJob>(
     },
     paperSize: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     paperWeight: {
       type: String,
       trim: true,
     },
+    paperDetails: [
+      {
+        paperId: {
+          type: String,
+          required: true,
+        },
+        type: {
+          type: String,
+          required: true,
+        },
+        size: {
+          type: String,
+          required: true,
+        },
+        weight: {
+          type: String,
+          required: true,
+        },
+        paperFrom: {
+          type: String,
+          required: true,
+        },
+        unit: {
+          type: String,
+          required: true,
+        },
+        issuedQuantity: {
+          type: Number,
+          default: 0,
+          required: true,
+        },
+        wastage: {
+          type: Number,
+          default: 0,
+          required: true,
+        },
+      },
+    ],
     totalBWPages: {
       type: Number,
       required: true,

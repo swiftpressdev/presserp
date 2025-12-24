@@ -38,7 +38,7 @@ async function addCompanyAssets(
   
   // Logo is already added in header for Job PDF, so skip here
   // Add signature if available
-  let signatureY = finalY + 15;
+  let signatureY = finalY - 1; // Decreased space above e-signature
   if (includeSignature && assets.esignature) {
     try {
       const signatureData = await loadImageForPDF(assets.esignature);
@@ -471,6 +471,16 @@ interface JobData {
   paperType?: string;
   paperSize: string;
   paperWeight?: string;
+  paperDetails?: Array<{
+    paperId: string;
+    type: string;
+    size: string;
+    weight: string;
+    paperFrom: string;
+    unit: string;
+    issuedQuantity: number;
+    wastage: number;
+  }>;
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -540,9 +550,9 @@ export async function generateJobPDF(data: JobData) {
         img.src = logoData;
       });
       
-      // Calculate dimensions maintaining aspect ratio (increased size)
-      const maxWidth = 40;
-      const maxHeight = 20;
+      // Calculate dimensions maintaining aspect ratio (smaller size for compact header)
+      const maxWidth = 30;
+      const maxHeight = 15;
       let logoWidth = img.width;
       let logoHeight = img.height;
       const aspectRatio = logoWidth / logoHeight;
@@ -562,23 +572,23 @@ export async function generateJobPDF(data: JobData) {
     }
   }
 
-  // 2. Company Name, Address, Phone on Top Middle (centered)
+  // 2. Company Name, Address, Phone on Top Middle (centered, compact)
   const centerX = 105;
-  let companyInfoY = headerY + 3;
-  doc.setFontSize(10);
+  let companyInfoY = headerY + 2;
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   
   if (assets.companyName) {
     doc.text(assets.companyName, centerX, companyInfoY, { align: 'center' });
-    companyInfoY += 5;
+    companyInfoY += 4;
   }
   
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   
   if (assets.address) {
     doc.text(assets.address, centerX, companyInfoY, { align: 'center' });
-    companyInfoY += 4;
+    companyInfoY += 3.5;
   }
   
   if (assets.phone) {
@@ -586,22 +596,22 @@ export async function generateJobPDF(data: JobData) {
   }
 
   // 3. Job Number on Top Right
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Job Card No.`, 190, headerY + 3, { align: 'right' });
+  doc.text(`Job Card No.`, 190, headerY + 2, { align: 'right' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(data.jobNo, 190, headerY + 9, { align: 'right' });
+  doc.setFontSize(8);
+  doc.text(data.jobNo, 190, headerY + 7, { align: 'right' });
 
-  // 4. Large "JOB CARD" title below header (right-aligned)
-  const titleY = headerY + 20;
+  // 4. Large "JOB CARD" title below header (right-aligned, compact)
+  const titleY = headerY + 15;
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text('JOB CARD', 190, titleY, { align: 'right' });
   doc.setFont('helvetica', 'normal');
 
   // Add horizontal line below JOB CARD (full width excluding margins)
-  const lineY = titleY + 6;
+  const lineY = titleY + 2; // Reduced spacing above horizontal line
   doc.setLineWidth(0.5);
   doc.line(20, lineY, 190, lineY);
 
@@ -611,7 +621,10 @@ export async function generateJobPDF(data: JobData) {
     doc.setFont('helvetica', 'bold');
     doc.text(`${label}:`, 20, y);
     
-    const valueX = 20 + labelWidth;
+    // Calculate label width dynamically and position rectangle closer
+    const labelText = `${label}:`;
+    const labelTextWidth = doc.getTextWidth(labelText);
+    const valueX = 20 + labelTextWidth + 3; // 3mm gap instead of fixed labelWidth
     const valueWidth = 190 - valueX;
     const rectHeight = 5;
     
@@ -626,11 +639,11 @@ export async function generateJobPDF(data: JobData) {
     const valueLines = doc.splitTextToSize(value || '-', valueWidth - 4);
     doc.text(valueLines, valueX + 2, y);
     
-    return y + 6.5;
+    return y + 6.3; // Increased spacing by 0.3mm
   };
 
-  // Client and Date Information Section
-  let yPos = titleY + 12;
+  // Client and Date Information Section - add spacing after horizontal line
+  let yPos = titleY + 9; // Moved up by 4 points
   doc.setFontSize(9);
   
   // Left side: Client Name and Address
@@ -671,45 +684,50 @@ export async function generateJobPDF(data: JobData) {
   const deliveryDateValueX = rightLabelX + deliveryDateLabelWidth + 3;
   const rightValueWidth = 190 - Math.max(dateValueX, deliveryDateValueX) - 2; // Fit remaining space with margin
   
-  doc.text('Date:', rightLabelX, titleY + 12);
+  doc.text('Date:', rightLabelX, titleY + 8); // Moved up by 4 points
   doc.setFont('helvetica', 'normal');
   doc.setLineWidth(0.2);
-  doc.rect(dateValueX, titleY + 8.5, rightValueWidth, nameRectHeight, 'S');
-  doc.text(data.jobDate, dateValueX + 2, titleY + 12);
+  doc.rect(dateValueX, titleY + 4.5, rightValueWidth, nameRectHeight, 'S'); // Moved up by 4 points
+  doc.text(data.jobDate, dateValueX + 2, titleY + 8); // Moved up by 4 points
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Delivery Date:', rightLabelX, titleY + 19);
+  doc.text('Delivery Date:', rightLabelX, titleY + 15); // Moved up by 4 points
   doc.setFont('helvetica', 'normal');
   doc.setLineWidth(0.2);
-  doc.rect(deliveryDateValueX, titleY + 15.5, rightValueWidth, addressRectHeight, 'S');
-  doc.text(data.deliveryDate, deliveryDateValueX + 2, titleY + 19);
+  doc.rect(deliveryDateValueX, titleY + 11.5, rightValueWidth, addressRectHeight, 'S'); // Moved up by 4 points
+  doc.text(data.deliveryDate, deliveryDateValueX + 2, titleY + 15); // Moved up by 4 points
 
-  yPos = titleY + 28;
+  yPos = titleY + 24; // Moved up by 4 points
   
   // Helper function to draw checkboxes with proper alignment and overflow handling
   const drawCheckboxes = (label: string, options: string[], checkedValues: string[], y: number, specialCheck?: (val: string, option: string) => boolean) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text(`${label}:`, 20, y);
+    const labelText = `${label}:`;
+    const labelWidth = doc.getTextWidth(labelText);
+    doc.text(labelText, 20, y);
     doc.setFont('helvetica', 'normal');
-    let currentX = 75;
+    // Position checkboxes closer to label
+    let currentX = 20 + labelWidth + 5;
     let currentY = y;
     
     options.forEach((option) => {
       const textWidth = doc.getTextWidth(option);
       const checkboxHeight = 3.5;
-      const nextX = currentX + checkboxHeight + 4 + textWidth + 8;
+      const checkboxGap = 3; // Gap between checkbox and text
+      const nextX = currentX + checkboxHeight + checkboxGap + textWidth + 8;
       
       // Check if would overflow, move to next line if needed
       if (nextX > 190) {
-        currentY += 6.5;
-        currentX = 75;
+        currentY += 5.5; // Reduced spacing
+        currentX = 20 + labelWidth + 5;
       }
       
-      // Align checkbox center with text baseline (larger size for better visibility)
-      // Checkbox height is 3.5mm, center it on text baseline (currentY)
-      // Top of checkbox should be at currentY - 1.75, bottom at currentY + 1.75
-      const checkboxTop = currentY - 1.75;
+      // Align checkbox with text - position checkbox center to align with text baseline
+      // Text baseline is at currentY, checkbox center should be at currentY
+      // Checkbox height is 3.5mm, so top should be at currentY - 1.75
+      // Adjust slightly to better align visually
+      const checkboxTop = currentY - 2.3; // Adjusted to align checkbox center with text baseline
       
       doc.setLineWidth(0.3);
       doc.rect(currentX, checkboxTop, checkboxHeight, checkboxHeight, 'S');
@@ -718,27 +736,34 @@ export async function generateJobPDF(data: JobData) {
         ? specialCheck(checkedValues.join(','), option)
         : checkedValues.some(val => val === option || (option === 'Cover' && val.includes('Outer')));
       if (isChecked) {
-        // Draw X mark centered in checkbox (with padding)
-        const padding = 0.5;
+        // Draw X mark centered in checkbox
+        const centerX = currentX + checkboxHeight / 2;
+        const centerY = checkboxTop + checkboxHeight / 2; // Center of checkbox
+        const xSize = 1.2;
+        doc.setLineWidth(0.4);
         doc.line(
-          currentX + padding, 
-          checkboxTop + padding, 
-          currentX + checkboxHeight - padding, 
-          checkboxTop + checkboxHeight - padding
+          centerX - xSize, 
+          centerY - xSize, 
+          centerX + xSize, 
+          centerY + xSize
         );
         doc.line(
-          currentX + padding, 
-          checkboxTop + checkboxHeight - padding, 
-          currentX + checkboxHeight - padding, 
-          checkboxTop + padding
+          centerX - xSize, 
+          centerY + xSize, 
+          centerX + xSize, 
+          centerY - xSize
         );
+        doc.setLineWidth(0.3);
       }
       
-      doc.text(option, currentX + checkboxHeight + 4, currentY);
-      currentX += textWidth + checkboxHeight + 12;
+      // Align text with checkbox - ensure text is not bold
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
+      currentX += checkboxHeight + checkboxGap + textWidth + 8;
     });
     
-    return currentY + 6.5;
+    return currentY + 6.3; // Increased spacing by 0.3mm
   };
   
   // Job Name
@@ -818,27 +843,88 @@ export async function generateJobPDF(data: JobData) {
   doc.setFont('helvetica', 'normal');
   doc.text(data.totalPages.toString(), totalPageValueX + 2, yPos);
   
-  yPos += 6.5;
+  yPos += 6.3; // Increased spacing by 0.3mm
   
-  // Page Color
-  if (data.pageColor) {
-    const pageColorValue = data.pageColor === 'Other' && data.pageColorOther ? data.pageColorOther : data.pageColor;
-    yPos = drawField('Page Color', pageColorValue, yPos, 45);
+  // Page Color and Finish Size in same line
+  if (data.pageColor || data.bookSize) {
+    const rectHeight = 5;
+    const gapBetweenBoxes = 8;
+    const labelGap = 3;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    
+    // Page Color
+    if (data.pageColor) {
+      const pageColorLabel = 'Page Color:';
+      const pageColorValue = data.pageColor === 'Other' && data.pageColorOther ? data.pageColorOther : data.pageColor;
+      const pageColorLabelWidth = doc.getTextWidth(pageColorLabel);
+      doc.text(pageColorLabel, 20, yPos);
+      const pageColorValueX = 20 + pageColorLabelWidth + labelGap;
+      const pageColorValueWidth = 50;
+      doc.setLineWidth(0.2);
+      doc.rect(pageColorValueX, yPos - 3.5, pageColorValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(pageColorValue, pageColorValueX + 2, yPos);
+    }
+    
+    // Finish Size
+    if (data.bookSize) {
+      const finishSizeLabel = 'Finish Size:';
+      const finishSizeValue = data.bookSize === 'Other' && data.bookSizeOther ? data.bookSizeOther : data.bookSize;
+      const finishSizeLabelX = data.pageColor ? (20 + doc.getTextWidth('Page Color:') + 3 + 50 + gapBetweenBoxes) : 20;
+      doc.setFont('helvetica', 'bold');
+      const finishSizeLabelWidth = doc.getTextWidth(finishSizeLabel);
+      doc.text(finishSizeLabel, finishSizeLabelX, yPos);
+      const finishSizeValueX = finishSizeLabelX + finishSizeLabelWidth + labelGap;
+      const finishSizeValueWidth = 190 - finishSizeValueX;
+      doc.setLineWidth(0.2);
+      doc.rect(finishSizeValueX, yPos - 3.5, finishSizeValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(finishSizeValue, finishSizeValueX + 2, yPos);
+    }
+    
+    yPos += 6.3; // Increased spacing by 0.3mm
   }
   
-  if (data.bookSize) {
-    const bookSizeValue = data.bookSize === 'Other' && data.bookSizeOther ? data.bookSizeOther : data.bookSize;
-    yPos = drawField('Size', bookSizeValue, yPos, 45);
-  }
-  
-  // Total Plate
-  if (data.totalPlate) {
-    yPos = drawField('Total Plate', data.totalPlate, yPos, 45);
-  }
-  
-  // Total Farma
-  if (data.totalFarma) {
-    yPos = drawField('Total Farma', data.totalFarma, yPos, 45);
+  // Total Plate and Total Farma in same line
+  if (data.totalPlate || data.totalFarma) {
+    const rectHeight = 5;
+    const gapBetweenBoxes = 8;
+    const labelGap = 3;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    
+    // Total Plate
+    if (data.totalPlate) {
+      const totalPlateLabel = 'Total Plate:';
+      const totalPlateLabelWidth = doc.getTextWidth(totalPlateLabel);
+      doc.text(totalPlateLabel, 20, yPos);
+      const totalPlateValueX = 20 + totalPlateLabelWidth + labelGap;
+      const totalPlateValueWidth = 40;
+      doc.setLineWidth(0.2);
+      doc.rect(totalPlateValueX, yPos - 3.5, totalPlateValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.totalPlate, totalPlateValueX + 2, yPos);
+    }
+    
+    // Total Farma
+    if (data.totalFarma) {
+      const totalFarmaLabel = 'Total Farma:';
+      const totalFarmaLabelX = data.totalPlate ? (20 + doc.getTextWidth('Total Plate:') + 3 + 40 + gapBetweenBoxes) : 20;
+      doc.setFont('helvetica', 'bold');
+      const totalFarmaLabelWidth = doc.getTextWidth(totalFarmaLabel);
+      doc.text(totalFarmaLabel, totalFarmaLabelX, yPos);
+      const totalFarmaValueX = totalFarmaLabelX + totalFarmaLabelWidth + labelGap;
+      const totalFarmaValueWidth = 190 - totalFarmaValueX;
+      doc.setLineWidth(0.2);
+      doc.rect(totalFarmaValueX, yPos - 3.5, totalFarmaValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.totalFarma, totalFarmaValueX + 2, yPos);
+    }
+    
+    yPos += 6.3; // Increased spacing by 0.3mm
   }
   
   // Plate By
@@ -847,13 +933,46 @@ export async function generateJobPDF(data: JobData) {
   };
   yPos = drawCheckboxes('Plate By', ['Company', 'Customer'], [data.plateBy], yPos, plateByCheck);
   
-  if (data.plateFrom) {
-    yPos = drawField('Plate From', data.plateFrom, yPos, 45);
-  }
-  
-  if (data.plateSize) {
-    const plateSizeValue = data.plateSize === 'Other' && data.plateSizeOther ? data.plateSizeOther : data.plateSize;
-    yPos = drawField('Plate Size', plateSizeValue, yPos, 45);
+  // Plate From and Plate Size in same line
+  if (data.plateFrom || data.plateSize) {
+    const standardValueX = 20 + 45;
+    const rectHeight = 5;
+    const gapBetweenBoxes = 8;
+    const labelGap = 3;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    
+    // Plate From
+    if (data.plateFrom) {
+      const plateFromLabel = 'Plate From:';
+      const plateFromLabelWidth = doc.getTextWidth(plateFromLabel);
+      doc.text(plateFromLabel, 20, yPos);
+      const plateFromValueX = 20 + plateFromLabelWidth + labelGap;
+      const plateFromValueWidth = 60;
+      doc.setLineWidth(0.2);
+      doc.rect(plateFromValueX, yPos - 3.5, plateFromValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.plateFrom, plateFromValueX + 2, yPos);
+    }
+    
+    // Plate Size
+    if (data.plateSize) {
+      const plateSizeValue = data.plateSize === 'Other' && data.plateSizeOther ? data.plateSizeOther : data.plateSize;
+      const plateSizeLabel = 'Plate Size:';
+      const plateSizeLabelX = data.plateFrom ? (20 + doc.getTextWidth('Plate From:') + 3 + 60 + gapBetweenBoxes) : 20;
+      doc.setFont('helvetica', 'bold');
+      const plateSizeLabelWidth = doc.getTextWidth(plateSizeLabel);
+      doc.text(plateSizeLabel, plateSizeLabelX, yPos);
+      const plateSizeValueX = plateSizeLabelX + plateSizeLabelWidth + labelGap;
+      const plateSizeValueWidth = 190 - plateSizeValueX;
+      doc.setLineWidth(0.2);
+      doc.rect(plateSizeValueX, yPos - 3.5, plateSizeValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(plateSizeValue, plateSizeValueX + 2, yPos);
+    }
+    
+    yPos += 6.3; // Increased spacing by 0.3mm
   }
   
   // Paper By
@@ -868,50 +987,353 @@ export async function generateJobPDF(data: JobData) {
     }
   }
   
-  // Paper Type
-  const paperTypeValue = data.paperType || data.paperName || '-';
-  yPos = drawField('Paper Type', paperTypeValue, yPos, 45);
-  
-  // Paper Size
-  yPos = drawField('Paper Size', data.paperSize, yPos, 45);
-  
-  // Paper From (Client Name)
-  if (data.paperFrom) {
-    yPos = drawField('Paper From', data.paperFrom, yPos, 45);
-  }
-  
-  // Paper Weight
-  if (data.paperWeight) {
-    yPos = drawField('Paper Weight', data.paperWeight, yPos, 45);
+  // Paper Details (when paperBy is 'customer' and paperDetails exist)
+  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+    // Display each paper detail
+    data.paperDetails.forEach((paperDetail, index) => {
+      if (index > 0) {
+        yPos += 1; // Increased spacing by 0.3mm between paper entries
+      } else {
+        // Reduce gap above first paper entry
+        yPos -= 1;
+      }
+      
+      // Paper header (only once per paper)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(`Paper ${index + 1}:`, 20, yPos);
+      yPos += 6.3; // Increased spacing by 0.3mm
+      
+      // First line: Type, Size, Weight
+      const rectHeight = 5;
+      const gapBetweenBoxes = 5;
+      const labelGap = 3;
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      
+      // Type
+      const typeLabel = 'Type:';
+      const typeLabelWidth = doc.getTextWidth(typeLabel);
+      doc.text(typeLabel, 20, yPos);
+      const typeValueX = 20 + typeLabelWidth + labelGap;
+      const typeValueWidth = 30;
+      doc.setLineWidth(0.2);
+      doc.rect(typeValueX, yPos - 3.5, typeValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.type, typeValueX + 2, yPos);
+      
+      // Size
+      const sizeLabel = 'Size:';
+      doc.setFont('helvetica', 'bold');
+      const sizeLabelX = typeValueX + typeValueWidth + gapBetweenBoxes;
+      const sizeLabelWidth = doc.getTextWidth(sizeLabel);
+      doc.text(sizeLabel, sizeLabelX, yPos);
+      const sizeValueX = sizeLabelX + sizeLabelWidth + labelGap;
+      const sizeValueWidth = 30;
+      doc.setLineWidth(0.2);
+      doc.rect(sizeValueX, yPos - 3.5, sizeValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.size, sizeValueX + 2, yPos);
+      
+      // Weight
+      const weightLabel = 'Weight:';
+      doc.setFont('helvetica', 'bold');
+      const weightLabelX = sizeValueX + sizeValueWidth + gapBetweenBoxes;
+      const weightLabelWidth = doc.getTextWidth(weightLabel);
+      doc.text(weightLabel, weightLabelX, yPos);
+      const weightValueX = weightLabelX + weightLabelWidth + labelGap;
+      const weightValueWidth = 190 - weightValueX; // Full width remaining
+      doc.setLineWidth(0.2);
+      doc.rect(weightValueX, yPos - 3.5, weightValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.weight, weightValueX + 2, yPos);
+      
+      yPos += 6.3; // Increased spacing by 0.3mm
+      
+      // Second line: From (full width)
+      const fromLabel = 'From:';
+      doc.setFont('helvetica', 'bold');
+      const fromLabelWidth = doc.getTextWidth(fromLabel);
+      doc.text(fromLabel, 20, yPos);
+      const fromValueX = 20 + fromLabelWidth + labelGap;
+      const fromValueWidth = 190 - fromValueX; // Full width
+      doc.setLineWidth(0.2);
+      doc.rect(fromValueX, yPos - 3.5, fromValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      const fromText = doc.splitTextToSize(paperDetail.paperFrom, fromValueWidth - 4);
+      doc.text(fromText, fromValueX + 2, yPos);
+      
+      yPos += 6.3; // Increased spacing by 0.3mm
+      
+      // Third line: Unit, Issued Qty, Wastage
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      
+      // Unit
+      const unitLabel = 'Unit:';
+      const unitLabelWidth = doc.getTextWidth(unitLabel);
+      doc.text(unitLabel, 20, yPos);
+      const unitValueX = 20 + unitLabelWidth + labelGap;
+      const unitValueWidth = 30;
+      doc.setLineWidth(0.2);
+      doc.rect(unitValueX, yPos - 3.5, unitValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.unit, unitValueX + 2, yPos);
+      
+      // Issued Qty
+      const issuedQtyLabel = 'Issued Qty:';
+      doc.setFont('helvetica', 'bold');
+      const issuedQtyLabelX = unitValueX + unitValueWidth + gapBetweenBoxes;
+      const issuedQtyLabelWidth = doc.getTextWidth(issuedQtyLabel);
+      doc.text(issuedQtyLabel, issuedQtyLabelX, yPos);
+      const issuedQtyValueX = issuedQtyLabelX + issuedQtyLabelWidth + labelGap;
+      const issuedQtyValueWidth = 30;
+      doc.setLineWidth(0.2);
+      doc.rect(issuedQtyValueX, yPos - 3.5, issuedQtyValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.issuedQuantity.toString(), issuedQtyValueX + 2, yPos);
+      
+      // Wastage
+      const wastageLabel = 'Wastage:';
+      doc.setFont('helvetica', 'bold');
+      const wastageLabelX = issuedQtyValueX + issuedQtyValueWidth + gapBetweenBoxes;
+      const wastageLabelWidth = doc.getTextWidth(wastageLabel);
+      doc.text(wastageLabel, wastageLabelX, yPos);
+      const wastageValueX = wastageLabelX + wastageLabelWidth + labelGap;
+      const wastageValueWidth = Math.max(0, 190 - wastageValueX);
+      doc.setLineWidth(0.2);
+      doc.rect(wastageValueX, yPos - 3.5, wastageValueWidth, rectHeight, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.text(paperDetail.wastage.toString(), wastageValueX + 2, yPos);
+      
+      yPos += 6.3; // Increased spacing by 0.3mm
+    });
+  } else {
+    // Fallback to old fields for backward compatibility
+    // Paper Type
+    const paperTypeValue = data.paperType || data.paperName || '-';
+    yPos = drawField('Paper Type', paperTypeValue, yPos, 45);
+    
+    // Paper Size
+    yPos = drawField('Paper Size', data.paperSize, yPos, 45);
+    
+    // Paper From (Client Name)
+    if (data.paperFrom) {
+      yPos = drawField('Paper From', data.paperFrom, yPos, 45);
+    }
+    
+    // Paper Weight
+    if (data.paperWeight) {
+      yPos = drawField('Paper Weight', data.paperWeight, yPos, 45);
+    }
   }
   
   // Machine
   yPos = drawField('Machine', data.machineName, yPos, 45);
   
-  // Lamination Thermal
-  if (data.laminationThermal) {
-    yPos = drawCheckboxes('Lamination Thermal', ['Matt', 'Gloss'], [data.laminationThermal], yPos);
-  }
-  
-  // Normal
-  if (data.normal) {
-    yPos = drawCheckboxes('Normal', ['Matt', 'Gloss'], [data.normal], yPos);
+  // Lamination Thermal and Normal in same line
+  if (data.laminationThermal || data.normal) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    let currentX = 20;
+    let currentY = yPos;
+    const checkboxHeight = 3.5;
+    const checkboxGap = 3;
+    
+    // Lamination Thermal
+    if (data.laminationThermal) {
+      const labelText = 'Lamination Thermal:';
+      const labelWidth = doc.getTextWidth(labelText);
+      doc.text(labelText, currentX, currentY);
+      currentX += labelWidth + 5;
+      
+      const laminationOptions = ['Matt', 'Gloss'];
+      laminationOptions.forEach((option) => {
+        const textWidth = doc.getTextWidth(option);
+        const nextX = currentX + checkboxHeight + checkboxGap + textWidth + 8;
+        
+        if (nextX > 190) {
+          currentY += 6.3;
+          currentX = 20 + labelWidth + 5;
+        }
+        
+        const checkboxTop = currentY - 1.6; // Adjusted to align checkbox center with text baseline
+        doc.setLineWidth(0.3);
+        doc.rect(currentX, checkboxTop, checkboxHeight, checkboxHeight, 'S');
+        
+        if (data.laminationThermal === option) {
+          const centerX = currentX + checkboxHeight / 2;
+          const centerY = checkboxTop + checkboxHeight / 2; // Center of checkbox
+          const xSize = 1.2;
+          doc.setLineWidth(0.4);
+          doc.line(centerX - xSize, centerY - xSize, centerX + xSize, centerY + xSize);
+          doc.line(centerX - xSize, centerY + xSize, centerX + xSize, centerY - xSize);
+          doc.setLineWidth(0.3);
+        }
+        
+        // Ensure text is not bold
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
+        currentX += checkboxHeight + checkboxGap + textWidth + 8;
+      });
+    }
+    
+    // Normal
+    if (data.normal) {
+      // Move to next line if needed
+      if (currentX > 140) {
+        currentY += 6.3;
+        currentX = 20;
+      } else {
+        currentX += 10; // Add gap between groups
+      }
+      
+      const labelText = 'Normal:';
+      const labelWidth = doc.getTextWidth(labelText);
+      doc.setFont('helvetica', 'bold');
+      doc.text(labelText, currentX, currentY);
+      currentX += labelWidth + 5;
+      
+      const normalOptions = ['Matt', 'Gloss'];
+      normalOptions.forEach((option) => {
+        const textWidth = doc.getTextWidth(option);
+        const nextX = currentX + checkboxHeight + checkboxGap + textWidth + 8;
+        
+        if (nextX > 190) {
+          currentY += 6.3;
+          currentX = 20 + labelWidth + 5;
+        }
+        
+        const checkboxTop = currentY - 1.6; // Adjusted to align checkbox center with text baseline
+        doc.setLineWidth(0.3);
+        doc.rect(currentX, checkboxTop, checkboxHeight, checkboxHeight, 'S');
+        
+        if (data.normal === option) {
+          const centerX = currentX + checkboxHeight / 2;
+          const centerY = checkboxTop + checkboxHeight / 2; // Center of checkbox
+          const xSize = 1.2;
+          doc.setLineWidth(0.4);
+          doc.line(centerX - xSize, centerY - xSize, centerX + xSize, centerY + xSize);
+          doc.line(centerX - xSize, centerY + xSize, centerX + xSize, centerY - xSize);
+          doc.setLineWidth(0.3);
+        }
+        
+        // Ensure text is not bold
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
+        currentX += checkboxHeight + checkboxGap + textWidth + 8;
+      });
+    }
+    
+    yPos = currentY + 5.5; // Reduced spacing
   }
   
   // Folding
   const foldingValue = data.folding ? 'Yes' : 'No';
   yPos = drawCheckboxes('Folding', ['Yes', 'No'], [foldingValue], yPos);
   
-  // Binding
-  if (data.binding) {
-    const bindingValue = data.binding === 'Other' && data.bindingOther ? data.bindingOther : data.binding;
-    yPos = drawCheckboxes('Binding', ['Perfect', 'Hard Cover'], [bindingValue], yPos);
-  }
-  
-  // Stitch
-  if (data.stitch) {
-    const stitchValue = data.stitch === 'Other' && data.stitchOther ? data.stitchOther : data.stitch;
-    yPos = drawCheckboxes('Stitch', ['Center', 'Side'], [stitchValue], yPos);
+  // Binding and Stitch in same line
+  if (data.binding || data.stitch) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    let currentX = 20;
+    let currentY = yPos;
+    const checkboxHeight = 3.5;
+    const checkboxGap = 3;
+    
+    // Binding
+    if (data.binding) {
+      const bindingValue = data.binding === 'Other' && data.bindingOther ? data.bindingOther : data.binding;
+      const labelText = 'Binding:';
+      const labelWidth = doc.getTextWidth(labelText);
+      doc.text(labelText, currentX, currentY);
+      currentX += labelWidth + 5;
+      
+      const bindingOptions = ['Perfect', 'Hard Cover'];
+      bindingOptions.forEach((option) => {
+        const textWidth = doc.getTextWidth(option);
+        const nextX = currentX + checkboxHeight + checkboxGap + textWidth + 8;
+        
+        if (nextX > 190) {
+          currentY += 6.3;
+          currentX = 20 + labelWidth + 5;
+        }
+        
+        const checkboxTop = currentY - 1.6; // Adjusted to align checkbox center with text baseline
+        doc.setLineWidth(0.3);
+        doc.rect(currentX, checkboxTop, checkboxHeight, checkboxHeight, 'S');
+        
+        if (bindingValue === option) {
+          const centerX = currentX + checkboxHeight / 2;
+          const centerY = checkboxTop + checkboxHeight / 2; // Center of checkbox
+          const xSize = 1.2;
+          doc.setLineWidth(0.4);
+          doc.line(centerX - xSize, centerY - xSize, centerX + xSize, centerY + xSize);
+          doc.line(centerX - xSize, centerY + xSize, centerX + xSize, centerY - xSize);
+          doc.setLineWidth(0.3);
+        }
+        
+        // Ensure text is not bold
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
+        currentX += checkboxHeight + checkboxGap + textWidth + 8;
+      });
+    }
+    
+    // Stitch
+    if (data.stitch) {
+      // Move to next line if needed
+      if (currentX > 140) {
+        currentY += 6.3;
+        currentX = 20;
+      } else {
+        currentX += 10; // Add gap between groups
+      }
+      
+      const stitchValue = data.stitch === 'Other' && data.stitchOther ? data.stitchOther : data.stitch;
+      const labelText = 'Stitch:';
+      const labelWidth = doc.getTextWidth(labelText);
+      doc.setFont('helvetica', 'bold');
+      doc.text(labelText, currentX, currentY);
+      currentX += labelWidth + 5;
+      
+      const stitchOptions = ['Center', 'Side'];
+      stitchOptions.forEach((option) => {
+        const textWidth = doc.getTextWidth(option);
+        const nextX = currentX + checkboxHeight + checkboxGap + textWidth + 8;
+        
+        if (nextX > 190) {
+          currentY += 6.3;
+          currentX = 20 + labelWidth + 5;
+        }
+        
+        const checkboxTop = currentY - 1.6; // Adjusted to align checkbox center with text baseline
+        doc.setLineWidth(0.3);
+        doc.rect(currentX, checkboxTop, checkboxHeight, checkboxHeight, 'S');
+        
+        if (stitchValue === option) {
+          const centerX = currentX + checkboxHeight / 2;
+          const centerY = checkboxTop + checkboxHeight / 2; // Center of checkbox
+          const xSize = 1.2;
+          doc.setLineWidth(0.4);
+          doc.line(centerX - xSize, centerY - xSize, centerX + xSize, centerY + xSize);
+          doc.line(centerX - xSize, centerY + xSize, centerX + xSize, centerY - xSize);
+          doc.setLineWidth(0.3);
+        }
+        
+        // Ensure text is not bold
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
+        currentX += checkboxHeight + checkboxGap + textWidth + 8;
+      });
+    }
+    
+    yPos = currentY + 5.5; // Reduced spacing
   }
   
   // Additional Services
@@ -936,11 +1358,11 @@ export async function generateJobPDF(data: JobData) {
     doc.rect(20, yPos + 1, 170, remarksRectHeight, 'S');
     const remarksLines = doc.splitTextToSize(data.remarks, 166);
     doc.text(remarksLines, 22, yPos + 6);
-    yPos += remarksRectHeight + 3;
+    yPos += remarksRectHeight + 4.3; // Increased spacing by 0.3mm
   }
   
   // Add proportional gap above Special Instructions
-  yPos += 5;
+  yPos += 2; // Reduced spacing above Special Instructions
   
   // Special Instructions
   if (data.specialInstructions) {
@@ -953,7 +1375,7 @@ export async function generateJobPDF(data: JobData) {
     doc.rect(20, yPos + 1, 170, instructionRectHeight, 'S');
     const instructionLines = doc.splitTextToSize(data.specialInstructions, 166);
     doc.text(instructionLines, 22, yPos + 6);
-    yPos += instructionRectHeight + 3;
+    yPos += instructionRectHeight + 4.3; // Increased spacing by 0.3mm
   }
 
   // Add company assets (stamp, signature) - logo already added in header
