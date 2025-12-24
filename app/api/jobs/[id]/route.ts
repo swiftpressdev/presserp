@@ -35,8 +35,18 @@ const updateJobSchema = z.object({
   paperIds: z.array(z.string()).optional(),
   paperId: z.string().optional(),
   paperType: z.string().optional(),
-  paperSize: z.string().min(1, 'Paper size is required'),
+  paperSize: z.string().optional(),
   paperWeight: z.string().optional(),
+  paperDetails: z.array(z.object({
+    paperId: z.string(),
+    type: z.string(),
+    size: z.string(),
+    weight: z.string(),
+    paperFrom: z.string(),
+    unit: z.string(),
+    issuedQuantity: z.number().min(0),
+    wastage: z.number().min(0),
+  })).optional(),
   totalBWPages: z.number().min(0),
   totalColorPages: z.number().min(0),
   pageColor: z.nativeEnum(PageColorType).optional(),
@@ -62,30 +72,75 @@ const updateJobSchema = z.object({
   remarks: z.string().optional(),
   specialInstructions: z.string().optional(),
 }).refine((data) => {
-  // If paperBy is 'customer' and paperIds are provided, paperType is required
-  if (data.paperBy === 'customer' && data.paperIds && data.paperIds.length > 0) {
-    return !!(data.paperType && data.paperType.trim().length > 0);
+  // If paperBy is 'customer' and paperDetails are provided, validate them
+  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+    // Validate that all paper details have required fields
+    for (const detail of data.paperDetails) {
+      if (!detail.type || !detail.size || !detail.weight || !detail.paperFrom || !detail.unit) {
+        return false;
+      }
+      if (detail.issuedQuantity < 0 || detail.wastage < 0) {
+        return false;
+      }
+      // Validate wastage <= issuedQuantity
+      if (detail.wastage > detail.issuedQuantity) {
+        return false;
+      }
+    }
+    return true;
   }
-  // If paperBy is 'company' or not set, paperId is required
-  if (data.paperBy !== 'customer') {
-    return !!(data.paperId && data.paperId.trim().length > 0);
+  // If paperBy is 'company', paperFromCustom is required (no paperId/paperSize needed)
+  if (data.paperBy === 'company') {
+    return !!(data.paperFromCustom && data.paperFromCustom.trim().length > 0);
   }
-  // If paperBy is not set, paperId is required
+  // If paperBy is not set, paperId and paperSize are required
   if (!data.paperBy) {
-    return !!(data.paperId && data.paperId.trim().length > 0);
+    if (!data.paperId || !data.paperId.trim().length) {
+      return false;
+    }
+    if (!data.paperSize || !data.paperSize.trim().length) {
+      return false;
+    }
+    return true;
   }
   return true;
 }, (data) => {
-  if (data.paperBy === 'customer' && data.paperIds && data.paperIds.length > 0) {
+  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+    for (const detail of data.paperDetails) {
+      if (!detail.type || !detail.size || !detail.weight || !detail.paperFrom || !detail.unit) {
+        return {
+          message: 'All paper detail fields are required',
+          path: ['paperDetails'],
+        };
+      }
+      // Validate wastage <= issuedQuantity
+      if (detail.wastage > detail.issuedQuantity) {
+        return {
+          message: `Wastage (${detail.wastage}) cannot be more than issued quantity (${detail.issuedQuantity}) for paper: ${detail.type} - ${detail.size}`,
+          path: ['paperDetails'],
+        };
+      }
+    }
+  }
+  if (data.paperBy === 'company' && (!data.paperFromCustom || !data.paperFromCustom.trim().length)) {
     return {
-      message: 'Paper type is required when selecting customer papers',
-      path: ['paperType'],
+      message: 'Page From (Custom) is required when paper is from company',
+      path: ['paperFromCustom'],
     };
   }
-  return {
-    message: 'Paper selection is required',
-    path: ['paperId'],
-  };
+  if (!data.paperBy && !data.paperId) {
+    return {
+      message: 'Paper ID is required',
+      path: ['paperId'],
+    };
+  }
+  if (!data.paperBy && (!data.paperSize || !data.paperSize.trim().length)) {
+    return {
+      message: 'Paper size is required',
+      path: ['paperSize'],
+    };
+  }
+  return {};
 });
 
 export async function GET(
@@ -100,8 +155,8 @@ export async function GET(
 
     const job = await Job.findOne({ _id: id, adminId })
       .populate('clientId', 'clientName address')
-      .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight')
-      .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight')
+      .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight units')
+      .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight units')
       .populate('machineId', 'equipmentName')
       .populate('relatedToJobId', 'jobNo jobName');
 
@@ -160,6 +215,48 @@ export async function PUT(
       );
     }
 
+    // Validate stock availability before updating job (only if paper details changed)
+    if (validatedData.paperBy === 'customer' && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
+      const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
+      const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
+      
+      // Only validate stock if paper details changed
+      if (paperDetailsChanged) {
+        for (const paperDetail of validatedData.paperDetails) {
+          const paperId = paperDetail.paperId;
+          // Get current remaining stock for this paper
+          const stockEntries = await PaperStock.find({ adminId, paperId })
+            .sort({ date: -1, createdAt: -1 })
+            .limit(1);
+          
+          const paper = await Paper.findById(paperId);
+          if (!paper) {
+            return NextResponse.json(
+              { error: `Paper not found for paper ID: ${paperId}` },
+              { status: 404 }
+            );
+          }
+
+          const currentRemaining = stockEntries.length > 0 
+            ? stockEntries[0].remaining 
+            : (paper.originalStock || 0);
+
+          const issuedPaper = paperDetail.issuedQuantity || 0;
+          const wastage = paperDetail.wastage || 0;
+          const totalRequired = issuedPaper + wastage;
+
+          // Check if there's enough stock
+          if (currentRemaining < totalRequired) {
+            const paperInfo = `${paper.paperType === 'Other' && paper.paperTypeOther ? paper.paperTypeOther : paper.paperType} - ${paper.paperSize} - ${paper.paperWeight}`;
+            return NextResponse.json(
+              { error: `Insufficient stock for paper: ${paperInfo}. Available: ${currentRemaining}, Required: ${totalRequired} (Issued: ${issuedPaper} + Wastage: ${wastage})` },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
+
     const job = await Job.findOneAndUpdate(
       { _id: id, adminId },
       {
@@ -168,24 +265,24 @@ export async function PUT(
       },
       { new: true }
     ).populate('clientId', 'clientName address')
-     .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight')
-     .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight')
+     .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight units')
+     .populate('paperIds', 'clientName paperType paperTypeOther paperSize paperWeight units')
      .populate('machineId', 'equipmentName')
      .populate('relatedToJobId', 'jobNo jobName');
 
-    // Deduct stock if paperBy is 'customer' and paperIds are provided and changed (company papers being used)
-    if (validatedData.paperBy === 'customer' && validatedData.paperIds && validatedData.paperIds.length > 0) {
-      const existingPaperIds = existingJob.paperIds 
-        ? (Array.isArray(existingJob.paperIds) ? existingJob.paperIds.map((p: any) => p.toString()) : [])
-        : [];
+    // Deduct stock if paperBy is 'customer' and paperDetails are provided
+    if (validatedData.paperBy === 'customer' && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
+      const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
       
-      const paperIdsChanged = JSON.stringify(existingPaperIds.sort()) !== JSON.stringify(validatedData.paperIds.sort());
+      // Check if paper details changed
+      const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
       
-      // Only create new stock entries if paperIds changed
-      if (paperIdsChanged) {
+      // Only create new stock entries if paper details changed
+      if (paperDetailsChanged) {
         const jobDate = validatedData.jobDate || getCurrentBSDate();
         
-        for (const paperId of validatedData.paperIds) {
+        for (const paperDetail of validatedData.paperDetails) {
+          const paperId = paperDetail.paperId;
           // Get current remaining stock for this paper
           const stockEntries = await PaperStock.find({ adminId, paperId })
             .sort({ date: -1, createdAt: -1 })
@@ -196,8 +293,8 @@ export async function PUT(
             ? stockEntries[0].remaining 
             : (paper?.originalStock || 0);
 
-          const issuedPaper = totalPages;
-          const wastage = 0; // Can be updated later
+          const issuedPaper = paperDetail.issuedQuantity || 0;
+          const wastage = paperDetail.wastage || 0;
           const remaining = currentRemaining - issuedPaper - wastage;
 
           // Create stock entry
