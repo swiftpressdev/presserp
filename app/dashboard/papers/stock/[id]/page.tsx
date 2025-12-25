@@ -8,6 +8,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatBSDate, getCurrentBSDate } from '@/lib/dateUtils';
 import { generatePaperStockPDF } from '@/lib/pdfUtils';
+import { generatePaperStockExcel } from '@/lib/excelUtils';
 
 interface PaperStock {
   _id: string;
@@ -278,12 +279,52 @@ export default function PaperStockPage() {
           units: paper.units,
           originalStock: paper.originalStock,
         },
-        stockEntries,
+        stockEntries: stockEntries.map(entry => ({
+          date: entry.date,
+          jobNo: entry.jobNo,
+          jobName: entry.jobName,
+          issuedPaper: entry.issuedPaper,
+          wastage: entry.wastage,
+          addedStock: entry.addedStock,
+          remaining: entry.remaining,
+          remarks: entry.remarks,
+        })),
       });
       toast.success('PDF exported successfully');
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('Failed to export PDF');
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (!paper) return;
+
+    try {
+      generatePaperStockExcel({
+        paper: {
+          clientName: paper.clientName,
+          paperType: paper.paperType === 'Other' && paper.paperTypeOther ? paper.paperTypeOther : paper.paperType,
+          paperSize: paper.paperSize,
+          paperWeight: paper.paperWeight,
+          units: paper.units,
+          originalStock: paper.originalStock,
+        },
+        stockEntries: stockEntries.map(entry => ({
+          date: entry.date,
+          jobNo: entry.jobNo,
+          jobName: entry.jobName,
+          issuedPaper: entry.issuedPaper,
+          wastage: entry.wastage,
+          addedStock: entry.addedStock,
+          remaining: entry.remaining,
+          remarks: entry.remarks,
+        })),
+      });
+      toast.success('Excel exported successfully');
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Failed to export Excel');
     }
   };
 
@@ -330,6 +371,12 @@ export default function PaperStockPage() {
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
             >
               Export PDF
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+            >
+              Export Excel
             </button>
             <button
               onClick={() => {
