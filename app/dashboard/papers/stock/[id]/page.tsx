@@ -16,6 +16,7 @@ interface PaperStock {
   jobName?: string;
   issuedPaper: number;
   wastage: number;
+  addedStock?: number;
   remaining: number;
   remarks?: string;
 }
@@ -48,7 +49,13 @@ export default function PaperStockPage() {
     wastage: 0,
     remarks: '',
   });
+  const [addStockFormData, setAddStockFormData] = useState({
+    date: getCurrentBSDate(),
+    addedStock: 0,
+    remarks: '',
+  });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddStockForm, setShowAddStockForm] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -100,6 +107,14 @@ export default function PaperStockPage() {
     return previousRemaining - formData.issuedPaper - formData.wastage;
   };
 
+  const calculateRemainingForAddStock = (entryIndex: number) => {
+    if (entryIndex === 0) {
+      return (paper?.originalStock || 0) + addStockFormData.addedStock;
+    }
+    const previousRemaining = stockEntries[entryIndex - 1].remaining;
+    return previousRemaining + addStockFormData.addedStock;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -149,17 +164,82 @@ export default function PaperStockPage() {
     }
   };
 
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (addStockFormData.addedStock <= 0) {
+      toast.error('Added stock must be greater than 0');
+      return;
+    }
+
+    const entryIndex = editingId ? stockEntries.findIndex(s => s._id === editingId) : stockEntries.length;
+    const remaining = calculateRemainingForAddStock(entryIndex);
+
+    try {
+      const url = editingId 
+        ? `/api/paper-stock/${editingId}`
+        : '/api/paper-stock';
+      
+      const method = editingId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paperId,
+          date: addStockFormData.date,
+          issuedPaper: 0,
+          wastage: 0,
+          addedStock: addStockFormData.addedStock,
+          remaining,
+          remarks: addStockFormData.remarks || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add stock');
+      }
+
+      toast.success(editingId ? 'Stock addition updated successfully' : 'Stock added successfully');
+      setShowAddStockForm(false);
+      setEditingId(null);
+      setAddStockFormData({
+        date: getCurrentBSDate(),
+        addedStock: 0,
+        remarks: '',
+      });
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add stock');
+    }
+  };
+
   const handleEdit = (entry: PaperStock) => {
     setEditingId(entry._id);
-    setFormData({
-      date: entry.date,
-      jobNo: entry.jobNo || '',
-      jobName: entry.jobName || '',
-      issuedPaper: entry.issuedPaper,
-      wastage: entry.wastage,
-      remarks: entry.remarks || '',
-    });
-    setShowAddForm(true);
+    if (entry.addedStock && entry.addedStock > 0) {
+      // Editing an add stock entry
+      setAddStockFormData({
+        date: entry.date,
+        addedStock: entry.addedStock,
+        remarks: entry.remarks || '',
+      });
+      setShowAddStockForm(true);
+    } else {
+      // Editing a regular stock entry
+      setFormData({
+        date: entry.date,
+        jobNo: entry.jobNo || '',
+        jobName: entry.jobName || '',
+        issuedPaper: entry.issuedPaper,
+        wastage: entry.wastage,
+        remarks: entry.remarks || '',
+      });
+      setShowAddForm(true);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -253,7 +333,23 @@ export default function PaperStockPage() {
             </button>
             <button
               onClick={() => {
+                setShowAddStockForm(!showAddStockForm);
+                setShowAddForm(false);
+                setEditingId(null);
+                setAddStockFormData({
+                  date: getCurrentBSDate(),
+                  addedStock: 0,
+                  remarks: '',
+                });
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+            >
+              {showAddStockForm ? 'Cancel' : 'Add Stock'}
+            </button>
+            <button
+              onClick={() => {
                 setShowAddForm(!showAddForm);
+                setShowAddStockForm(false);
                 setEditingId(null);
                 setFormData({
                   date: getCurrentBSDate(),
@@ -298,6 +394,78 @@ export default function PaperStockPage() {
             </div>
           </div>
         </div>
+
+        {/* Add Stock Form */}
+        {showAddStockForm && (
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingId ? 'Edit Stock Addition' : 'Add New Stock'}
+            </h2>
+            <form onSubmit={handleAddStock} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Date (BS) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={addStockFormData.date}
+                    onChange={(e) => setAddStockFormData({ ...addStockFormData, date: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Added Stock <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0.01"
+                    step="0.01"
+                    value={addStockFormData.addedStock}
+                    onChange={(e) => setAddStockFormData({ ...addStockFormData, addedStock: Number(e.target.value) })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Remarks</label>
+                  <input
+                    type="text"
+                    value={addStockFormData.remarks}
+                    onChange={(e) => setAddStockFormData({ ...addStockFormData, remarks: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                >
+                  {editingId ? 'Update' : 'Add'} Stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddStockForm(false);
+                    setEditingId(null);
+                    setAddStockFormData({
+                      date: getCurrentBSDate(),
+                      addedStock: 0,
+                      remarks: '',
+                    });
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Add/Edit Form */}
         {showAddForm && (
@@ -425,6 +593,9 @@ export default function PaperStockPage() {
                   Wastage
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                  Added Stock
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                   Remaining
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -438,7 +609,7 @@ export default function PaperStockPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {stockEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
                     No stock entries found
                   </td>
                 </tr>
@@ -459,6 +630,9 @@ export default function PaperStockPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-300">
                       {entry.wastage}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 border-r border-gray-300">
+                      {entry.addedStock && entry.addedStock > 0 ? `+${entry.addedStock}` : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 border-r border-gray-300">
                       {entry.remaining}

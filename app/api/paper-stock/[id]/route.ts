@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import PaperStock from '@/models/PaperStock';
+import mongoose from 'mongoose';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -11,6 +12,7 @@ const updatePaperStockSchema = z.object({
   jobId: z.string().optional(),
   issuedPaper: z.number().min(0, 'Issued paper must be 0 or greater').optional(),
   wastage: z.number().min(0, 'Wastage must be 0 or greater').optional(),
+  addedStock: z.number().min(0, 'Added stock must be 0 or greater').optional(),
   remaining: z.number().optional(),
   remarks: z.string().optional(),
 });
@@ -24,6 +26,11 @@ export async function GET(
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;
+
+    // Ensure Job model is registered
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
 
     const stockEntry = await PaperStock.findOne({ _id: id, adminId })
       .populate('jobId', 'jobNo jobName');
@@ -81,11 +88,23 @@ export async function PUT(
     
     // Calculate remaining for this entry
     let remaining: number;
+    const addedStock = validatedData.addedStock !== undefined ? validatedData.addedStock : (stockEntry.addedStock || 0);
+    const issuedPaper = validatedData.issuedPaper !== undefined ? validatedData.issuedPaper : stockEntry.issuedPaper;
+    const wastage = validatedData.wastage !== undefined ? validatedData.wastage : stockEntry.wastage;
+    
     if (entryIndex === 0) {
-      remaining = (paper.originalStock || 0) - (validatedData.issuedPaper ?? stockEntry.issuedPaper) - (validatedData.wastage ?? stockEntry.wastage);
+      if (addedStock > 0) {
+        remaining = (paper.originalStock || 0) + addedStock;
+      } else {
+        remaining = (paper.originalStock || 0) - issuedPaper - wastage;
+      }
     } else {
       const previousRemaining = allEntries[entryIndex - 1].remaining;
-      remaining = previousRemaining - (validatedData.issuedPaper ?? stockEntry.issuedPaper) - (validatedData.wastage ?? stockEntry.wastage);
+      if (addedStock > 0) {
+        remaining = previousRemaining + addedStock;
+      } else {
+        remaining = previousRemaining - issuedPaper - wastage;
+      }
     }
 
     // If jobId is provided, populate job details
@@ -93,6 +112,11 @@ export async function PUT(
       ...validatedData,
       remaining: Math.max(0, remaining),
     };
+    
+    // Handle addedStock - set to undefined if 0 to keep it clean
+    if (validatedData.addedStock !== undefined) {
+      updateData.addedStock = addedStock > 0 ? addedStock : undefined;
+    }
     
     if (validatedData.jobId && !validatedData.jobNo) {
       const Job = (await import('@/models/Job')).default;
@@ -114,7 +138,12 @@ export async function PUT(
     let currentRemaining = remaining;
     
     for (const entry of subsequentEntries) {
-      currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+      const entryAddedStock = entry.addedStock || 0;
+      if (entryAddedStock > 0) {
+        currentRemaining = currentRemaining + entryAddedStock;
+      } else {
+        currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+      }
       await PaperStock.findByIdAndUpdate(entry._id, {
         remaining: Math.max(0, currentRemaining),
       });
@@ -175,7 +204,12 @@ export async function DELETE(
       }
       
       for (const entry of subsequentEntries) {
-        currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+        const entryAddedStock = entry.addedStock || 0;
+        if (entryAddedStock > 0) {
+          currentRemaining = currentRemaining + entryAddedStock;
+        } else {
+          currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+        }
         await PaperStock.findByIdAndUpdate(entry._id, {
           remaining: Math.max(0, currentRemaining),
         });

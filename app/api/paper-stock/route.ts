@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import PaperStock from '@/models/PaperStock';
+import mongoose from 'mongoose';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -12,6 +13,7 @@ const paperStockSchema = z.object({
   jobId: z.string().optional(),
   issuedPaper: z.number().min(0, 'Issued paper must be 0 or greater'),
   wastage: z.number().min(0, 'Wastage must be 0 or greater'),
+  addedStock: z.number().min(0, 'Added stock must be 0 or greater').optional(),
   remaining: z.number(),
   remarks: z.string().optional(),
 });
@@ -27,6 +29,11 @@ export async function GET(request: NextRequest) {
 
     if (!paperId) {
       return NextResponse.json({ error: 'Paper ID is required' }, { status: 400 });
+    }
+
+    // Ensure Job model is registered
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
     }
 
     const stockEntries = await PaperStock.find({ adminId, paperId })
@@ -65,11 +72,26 @@ export async function POST(request: NextRequest) {
     
     // Calculate remaining based on the last entry or original stock
     let remaining: number;
+    const addedStock = validatedData.addedStock || 0;
+    
     if (allEntries.length === 0) {
-      remaining = (paper.originalStock || 0) - validatedData.issuedPaper - validatedData.wastage;
+      // For new entries, start from original stock
+      if (addedStock > 0) {
+        // Adding new stock
+        remaining = (paper.originalStock || 0) + addedStock;
+      } else {
+        // Deducting stock
+        remaining = (paper.originalStock || 0) - validatedData.issuedPaper - validatedData.wastage;
+      }
     } else {
       const lastEntry = allEntries[allEntries.length - 1];
-      remaining = lastEntry.remaining - validatedData.issuedPaper - validatedData.wastage;
+      if (addedStock > 0) {
+        // Adding new stock
+        remaining = lastEntry.remaining + addedStock;
+      } else {
+        // Deducting stock
+        remaining = lastEntry.remaining - validatedData.issuedPaper - validatedData.wastage;
+      }
     }
 
     // If jobId is provided, populate job details
@@ -94,6 +116,7 @@ export async function POST(request: NextRequest) {
       jobId: validatedData.jobId || undefined,
       issuedPaper: validatedData.issuedPaper,
       wastage: validatedData.wastage,
+      addedStock: addedStock > 0 ? addedStock : undefined,
       remaining: Math.max(0, remaining),
       remarks: validatedData.remarks || undefined,
       createdBy: user.email || user.id,
