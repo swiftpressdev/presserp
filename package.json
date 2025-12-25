@@ -16,6 +16,7 @@
     "jspdf-autotable": "^3.8.4",
     "mongoose": "^8.8.4",
     "nepali-date-converter": "^3.3.1",
+    "nepali-datepicker-reactjs": "^1.1.9",
     "next": "16.0.10",
     "react": "19.2.1",
     "react-dom": "19.2.1",

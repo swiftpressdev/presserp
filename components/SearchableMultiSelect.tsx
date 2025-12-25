@@ -18,6 +18,7 @@ interface SearchableMultiSelectProps {
   required?: boolean;
   emptyMessage?: string;
   maxHeight?: string;
+  maxSelection?: number;
 }
 
 export default function SearchableMultiSelect({
@@ -30,6 +31,7 @@ export default function SearchableMultiSelect({
   required = false,
   emptyMessage = 'No options available',
   maxHeight = 'max-h-60',
+  maxSelection,
 }: SearchableMultiSelectProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -49,12 +51,24 @@ export default function SearchableMultiSelect({
     if (selectedValues.includes(value)) {
       onChange(selectedValues.filter((v) => v !== value));
     } else {
+      // Check if maxSelection limit is reached
+      if (maxSelection !== undefined && selectedValues.length >= maxSelection) {
+        return; // Don't allow selection if limit reached
+      }
       onChange([...selectedValues, value]);
     }
   };
 
   const handleSelectAll = () => {
+    if (maxSelection !== undefined) {
+      // Only select up to maxSelection items
+      const itemsToSelect = filteredOptions
+        .slice(0, maxSelection)
+        .map((opt) => opt.value);
+      onChange(itemsToSelect);
+    } else {
     onChange(filteredOptions.map((opt) => opt.value));
+    }
   };
 
   const handleClearAll = () => {
@@ -67,7 +81,7 @@ export default function SearchableMultiSelect({
         {label} {required && <span className="text-red-500">*</span>}
         {selectedValues.length > 0 && (
           <span className="text-xs text-gray-500 ml-2">
-            ({selectedValues.length} selected)
+            ({selectedValues.length}{maxSelection ? `/${maxSelection}` : ''} selected)
           </span>
         )}
       </label>
@@ -95,6 +109,7 @@ export default function SearchableMultiSelect({
               className="text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               Select All {filteredOptions.length !== options.length && `(${filteredOptions.length})`}
+              {maxSelection && ` (max ${maxSelection})`}
             </button>
             <span className="text-gray-300">|</span>
             <button
@@ -116,16 +131,23 @@ export default function SearchableMultiSelect({
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredOptions.map((option) => (
+              {filteredOptions.map((option) => {
+                const isSelected = selectedValues.includes(option.value);
+                const isAtMaxSelection = maxSelection !== undefined && selectedValues.length >= maxSelection;
+                const isDisabled = disabled || (!isSelected && isAtMaxSelection);
+                
+                return (
                 <label
                   key={option.value}
-                  className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`flex items-center px-4 py-3 transition-colors ${
+                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'
+                    }`}
                 >
                   <input
                     type="checkbox"
-                    checked={selectedValues.includes(option.value)}
+                      checked={isSelected}
                     onChange={() => handleToggle(option.value)}
-                    disabled={disabled}
+                      disabled={isDisabled}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                   />
                   <span className="ml-3 text-sm flex-1">
@@ -135,15 +157,21 @@ export default function SearchableMultiSelect({
                     )}
                   </span>
                 </label>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Validation Message */}
+      {/* Validation Messages */}
       {required && selectedValues.length === 0 && options.length > 0 && (
         <p className="mt-1 text-xs text-red-500">Please select at least one option</p>
+      )}
+      {maxSelection !== undefined && selectedValues.length >= maxSelection && (
+        <p className="mt-1 text-xs text-amber-600">
+          Maximum selection limit reached ({maxSelection} items)
+        </p>
       )}
     </div>
   );

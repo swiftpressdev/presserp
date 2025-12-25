@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import SearchableMultiSelect from './SearchableMultiSelect';
+import NepaliDatePicker from './NepaliDatePicker';
 import { getCurrentBSDate } from '@/lib/dateUtils';
 
 export interface DeliveryNote {
@@ -173,12 +174,11 @@ export default function DeliveryNotesTable({
             {deliveryNotes.map((note, index) => (
               <tr key={index}>
                 <td className="border border-gray-300 px-4 py-2">
-                  <input
-                    type="text"
+                  <NepaliDatePicker
                     value={note.date}
-                    onChange={(e) => updateRow(index, 'date', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(value) => updateRow(index, 'date', value)}
                     placeholder="YYYY-MM-DD"
+                    className="w-full"
                   />
                 </td>
                 <td className="border border-gray-300 px-4 py-2">

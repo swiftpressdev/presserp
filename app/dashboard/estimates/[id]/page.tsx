@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import ParticularsTable, { Particular } from '@/components/ParticularsTable';
 import DeliveryNotesTable, { DeliveryNote } from '@/components/DeliveryNotesTable';
 import SearchableMultiSelect from '@/components/SearchableMultiSelect';
+import NepaliDatePicker from '@/components/NepaliDatePicker';
 import toast from 'react-hot-toast';
 
 interface Client {
@@ -357,22 +358,21 @@ export default function EditEstimatePage() {
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Client <span className="text-red-500">*</span>
-              </label>
-              <select
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={(selectedClientIds) => {
+                  handleClientChange(selectedClientIds[0] || '');
+                }}
+                label="Client"
+                placeholder="Search client..."
                 required
-                value={formData.clientId}
-                onChange={(e) => handleClientChange(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Client</option>
-                {clients.map((client) => (
-                  <option key={client._id} value={client._id}>
-                    {client.clientName}
-                  </option>
-                ))}
-              </select>
+                emptyMessage="No clients available"
+                maxSelection={1}
+              />
             </div>
 
             <div className="md:col-span-2">
@@ -399,13 +399,11 @@ export default function EditEstimatePage() {
               <label className="block text-sm font-medium text-gray-700">
                 Estimate Date (BS) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
+              <NepaliDatePicker
                 value={formData.estimateDate}
-                onChange={(e) => setFormData({ ...formData, estimateDate: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(value) => setFormData({ ...formData, estimateDate: value })}
                 placeholder="YYYY-MM-DD"
+                required
               />
             </div>
 
