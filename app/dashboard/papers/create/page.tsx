@@ -4,15 +4,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import SearchableMultiSelect from '@/components/SearchableMultiSelect';
 import { PaperType, PaperUnit } from '@/lib/types';
 import toast from 'react-hot-toast';
+
+interface Client {
+  _id: string;
+  clientName: string;
+}
 
 export default function CreatePaperPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const [formData, setFormData] = useState({
-    clientName: '',
+    clientId: '',
     paperType: PaperType.MAP_LITHO,
     paperTypeOther: '',
     paperSize: '',
@@ -27,9 +34,38 @@ export default function CreatePaperPage() {
     }
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    if (user) {
+      fetchClients();
+    }
+  }, [user]);
+
+  const fetchClients = async () => {
+    try {
+      const response = await fetch('/api/clients');
+      const data = await response.json();
+      setClients(data.clients || []);
+    } catch (error) {
+      console.error('Failed to fetch clients:', error);
+      toast.error('Failed to load clients');
+    }
+  };
+
+  const handleClientChange = (selectedClientIds: string[]) => {
+    setFormData({ ...formData, clientId: selectedClientIds[0] || '' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Get clientName from selected clientId
+    const selectedClient = clients.find((c) => c._id === formData.clientId);
+    if (!selectedClient) {
+      toast.error('Please select a client');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/papers', {
@@ -37,7 +73,15 @@ export default function CreatePaperPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          clientName: selectedClient.clientName,
+          paperType: formData.paperType,
+          paperTypeOther: formData.paperTypeOther || undefined,
+          paperSize: formData.paperSize,
+          paperWeight: formData.paperWeight,
+          units: formData.units,
+          originalStock: formData.originalStock,
+        }),
       });
 
       const data = await response.json();
@@ -71,15 +115,18 @@ export default function CreatePaperPage() {
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Client Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={handleClientChange}
+                label="Client Name"
+                placeholder="Search client..."
                 required
-                value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                emptyMessage="No clients available"
+                maxSelection={1}
               />
             </div>
 

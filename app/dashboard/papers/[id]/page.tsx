@@ -4,8 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import SearchableMultiSelect from '@/components/SearchableMultiSelect';
 import { PaperType, PaperUnit } from '@/lib/types';
 import toast from 'react-hot-toast';
+
+interface Client {
+  _id: string;
+  clientName: string;
+}
 
 export default function EditPaperPage() {
   const { user, loading: authLoading } = useAuth();
@@ -14,8 +20,9 @@ export default function EditPaperPage() {
   const paperId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const [formData, setFormData] = useState({
-    clientName: '',
+    clientId: '',
     paperType: PaperType.MAP_LITHO,
     paperTypeOther: '',
     paperSize: '',
@@ -32,39 +39,63 @@ export default function EditPaperPage() {
 
   useEffect(() => {
     if (user && paperId) {
-      fetchPaper();
+      fetchClientsAndPaper();
     }
   }, [user, paperId]);
 
-  const fetchPaper = async () => {
+  const fetchClientsAndPaper = async () => {
     try {
-      const response = await fetch(`/api/papers/${paperId}`);
-      const data = await response.json();
+      // First fetch clients
+      const clientsResponse = await fetch('/api/clients');
+      const clientsData = await clientsResponse.json();
+      const fetchedClients = clientsData.clients || [];
+      setClients(fetchedClients);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch paper');
+      // Then fetch paper and match client
+      const paperResponse = await fetch(`/api/papers/${paperId}`);
+      const paperData = await paperResponse.json();
+
+      if (!paperResponse.ok) {
+        throw new Error(paperData.error || 'Failed to fetch paper');
       }
 
+      // Find client by clientName and set clientId
+      const clientName = paperData.paper.clientName || '';
+      const matchedClient = fetchedClients.find((c: Client) => c.clientName === clientName);
+      const clientId = matchedClient?._id || '';
+
       setFormData({
-        clientName: data.paper.clientName || '',
-        paperType: data.paper.paperType || PaperType.MAP_LITHO,
-        paperTypeOther: data.paper.paperTypeOther || '',
-        paperSize: data.paper.paperSize || '',
-        paperWeight: data.paper.paperWeight || '',
-        units: data.paper.units || PaperUnit.REAM,
-        originalStock: data.paper.originalStock || 0,
+        clientId,
+        paperType: paperData.paper.paperType || PaperType.MAP_LITHO,
+        paperTypeOther: paperData.paper.paperTypeOther || '',
+        paperSize: paperData.paper.paperSize || '',
+        paperWeight: paperData.paper.paperWeight || '',
+        units: paperData.paper.units || PaperUnit.REAM,
+        originalStock: paperData.paper.originalStock || 0,
       });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch paper');
+      toast.error(error.message || 'Failed to fetch data');
       router.push('/dashboard/papers');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleClientChange = (selectedClientIds: string[]) => {
+    setFormData({ ...formData, clientId: selectedClientIds[0] || '' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
+    // Get clientName from selected clientId
+    const selectedClient = clients.find((c) => c._id === formData.clientId);
+    if (!selectedClient) {
+      toast.error('Please select a client');
+      setSaving(false);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/papers/${paperId}`, {
@@ -73,7 +104,7 @@ export default function EditPaperPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clientName: formData.clientName,
+          clientName: selectedClient.clientName,
           paperType: formData.paperType,
           paperTypeOther: formData.paperType === PaperType.OTHER ? formData.paperTypeOther : undefined,
           paperSize: formData.paperSize,
@@ -124,15 +155,18 @@ export default function EditPaperPage() {
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Client Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={handleClientChange}
+                label="Client Name"
+                placeholder="Search client..."
                 required
-                value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                emptyMessage="No clients available"
+                maxSelection={1}
               />
             </div>
 

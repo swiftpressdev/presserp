@@ -72,8 +72,12 @@ const updateJobSchema = z.object({
   remarks: z.string().optional(),
   specialInstructions: z.string().optional(),
 }).refine((data) => {
-  // If paperBy is 'customer' and paperDetails are provided, validate them
-  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+  // If paperBy is 'customer' or 'company' and paperDetails are provided, validate them
+  if ((data.paperBy === 'customer' || data.paperBy === 'company') && data.paperDetails && data.paperDetails.length > 0) {
+    // Limit to 4 papers maximum
+    if (data.paperDetails.length > 4) {
+      return false;
+    }
     // Validate that all paper details have required fields
     for (const detail of data.paperDetails) {
       if (!detail.type || !detail.size || !detail.weight || !detail.paperFrom || !detail.unit) {
@@ -89,10 +93,6 @@ const updateJobSchema = z.object({
     }
     return true;
   }
-  // If paperBy is 'company', paperFromCustom is required (no paperId/paperSize needed)
-  if (data.paperBy === 'company') {
-    return !!(data.paperFromCustom && data.paperFromCustom.trim().length > 0);
-  }
   // If paperBy is not set, paperId and paperSize are required
   if (!data.paperBy) {
     if (!data.paperId || !data.paperId.trim().length) {
@@ -105,7 +105,14 @@ const updateJobSchema = z.object({
   }
   return true;
 }, (data) => {
-  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+  if ((data.paperBy === 'customer' || data.paperBy === 'company') && data.paperDetails && data.paperDetails.length > 0) {
+    // Limit to 4 papers maximum
+    if (data.paperDetails.length > 4) {
+      return {
+        message: 'You can select a maximum of 4 papers',
+        path: ['paperDetails'],
+      };
+    }
     for (const detail of data.paperDetails) {
       if (!detail.type || !detail.size || !detail.weight || !detail.paperFrom || !detail.unit) {
         return {
@@ -121,12 +128,6 @@ const updateJobSchema = z.object({
         };
       }
     }
-  }
-  if (data.paperBy === 'company' && (!data.paperFromCustom || !data.paperFromCustom.trim().length)) {
-    return {
-      message: 'Page From (Custom) is required when paper is from company',
-      path: ['paperFromCustom'],
-    };
   }
   if (!data.paperBy && !data.paperId) {
     return {
@@ -216,7 +217,7 @@ export async function PUT(
     }
 
     // Validate stock availability before updating job (only if paper details changed)
-    if (validatedData.paperBy === 'customer' && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
+    if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
       const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
       
@@ -270,8 +271,8 @@ export async function PUT(
      .populate('machineId', 'equipmentName')
      .populate('relatedToJobId', 'jobNo jobName');
 
-    // Deduct stock if paperBy is 'customer' and paperDetails are provided
-    if (validatedData.paperBy === 'customer' && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
+    // Deduct stock if paperBy is 'customer' or 'company' and paperDetails are provided
+    if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
       
       // Check if paper details changed

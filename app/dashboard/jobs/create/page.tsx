@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import SearchableMultiSelect from '@/components/SearchableMultiSelect';
+import NepaliDatePicker from '@/components/NepaliDatePicker';
 import { getCurrentBSDate } from '@/lib/dateUtils';
 import {
   JobType,
@@ -166,6 +167,7 @@ export default function CreateJobPage() {
   };
 
   const handlePaperIdsChange = (selectedPaperIds: string[]) => {
+    // Component now enforces maxSelection limit, so we can trust the length
     const selectedPapers = papers.filter((p) => selectedPaperIds.includes(p._id));
     
     // Create paper detail objects for each selected paper
@@ -221,7 +223,7 @@ export default function CreateJobPage() {
     }
 
     // Validate wastage <= issuedQuantity for all paper details
-    if (formData.paperBy === 'customer' && formData.paperDetails.length > 0) {
+    if ((formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperDetails.length > 0) {
       for (const detail of formData.paperDetails) {
         if (detail.wastage > detail.issuedQuantity) {
           toast.error(`Wastage (${detail.wastage}) cannot be more than issued quantity (${detail.issuedQuantity}) for paper: ${detail.type} - ${detail.size}`);
@@ -236,11 +238,11 @@ export default function CreateJobPage() {
       const submitData = {
         ...formData,
         paperBy: formData.paperBy || undefined,
-        paperFrom: formData.paperBy === 'customer' ? formData.paperFrom : undefined,
-        paperFromCustom: formData.paperBy === 'company' ? formData.paperFromCustom : undefined,
-        paperIds: formData.paperBy === 'customer' && formData.paperIds.length > 0 ? formData.paperIds : undefined,
-        paperId: formData.paperBy === 'customer' ? undefined : (formData.paperBy === 'company' ? undefined : formData.paperId || undefined),
-        paperDetails: formData.paperBy === 'customer' && formData.paperDetails.length > 0 ? formData.paperDetails : undefined,
+        paperFrom: (formData.paperBy === 'customer' || formData.paperBy === 'company') ? formData.paperFrom : undefined,
+        paperFromCustom: undefined, // Removed Page From (Custom) field
+        paperIds: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperIds.length > 0 ? formData.paperIds : undefined,
+        paperId: (formData.paperBy === 'customer' || formData.paperBy === 'company') ? undefined : (formData.paperId || undefined),
+        paperDetails: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperDetails.length > 0 ? formData.paperDetails : undefined,
         pageColor: formData.pageColor || undefined,
         pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
         bookSize: formData.bookSize || undefined,
@@ -312,35 +314,32 @@ export default function CreateJobPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Client <span className="text-red-500">*</span>
-              </label>
-              <select
+              <SearchableMultiSelect
+                options={clients.map((client) => ({
+                  value: client._id,
+                  label: client.clientName,
+                }))}
+                selectedValues={formData.clientId ? [formData.clientId] : []}
+                onChange={(selectedClientIds) => {
+                  setFormData({ ...formData, clientId: selectedClientIds[0] || '' });
+                }}
+                label="Client"
+                placeholder="Search client..."
                 required
-                value={formData.clientId}
-                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Client</option>
-                {clients.map((client) => (
-                  <option key={client._id} value={client._id}>
-                    {client.clientName}
-                  </option>
-                ))}
-              </select>
+                emptyMessage="No clients available"
+                maxSelection={1}
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Job Date (BS) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
+              <NepaliDatePicker
                 value={formData.jobDate}
-                onChange={(e) => setFormData({ ...formData, jobDate: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(value) => setFormData({ ...formData, jobDate: value })}
                 placeholder="YYYY-MM-DD"
+                required
               />
             </div>
 
@@ -348,13 +347,11 @@ export default function CreateJobPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Delivery Date (BS) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
+              <NepaliDatePicker
                 value={formData.deliveryDate}
-                onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(value) => setFormData({ ...formData, deliveryDate: value })}
                 placeholder="YYYY-MM-DD"
+                required
               />
             </div>
 
@@ -415,14 +412,14 @@ export default function CreateJobPage() {
                     name="paperBy"
                     value="company"
                     checked={formData.paperBy === 'company'}
-                    onChange={(e) => setFormData({ ...formData, paperBy: e.target.value as 'company', paperFromCustom: '', paperId: '', paperDetails: [] })}
+                    onChange={(e) => setFormData({ ...formData, paperBy: e.target.value as 'company', paperIds: [], paperDetails: [] })}
                   />
                   <span>Company</span>
                 </label>
               </div>
             </div>
 
-            {formData.paperBy === 'customer' && (
+            {(formData.paperBy === 'customer' || formData.paperBy === 'company') && (
               <>
                 <div className="md:col-span-2">
                   <SearchableMultiSelect
@@ -435,6 +432,7 @@ export default function CreateJobPage() {
                     label="Select Papers"
                     placeholder="Search papers..."
                     emptyMessage="No papers available"
+                    maxSelection={4}
                   />
                 </div>
 
@@ -542,22 +540,6 @@ export default function CreateJobPage() {
                   </div>
                 ))}
               </>
-            )}
-
-            {formData.paperBy === 'company' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                  Page From (Custom) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                  value={formData.paperFromCustom}
-                  onChange={(e) => setFormData({ ...formData, paperFromCustom: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter custom page from"
-              />
-            </div>
             )}
 
             <div>
@@ -919,19 +901,21 @@ export default function CreateJobPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Related To Job</label>
-              <select
-                value={formData.relatedToJobId}
-                onChange={(e) => setFormData({ ...formData, relatedToJobId: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">None</option>
-                {jobs.map((job) => (
-                  <option key={job._id} value={job._id}>
-                    {job.jobNo} - {job.jobName}
-                  </option>
-                ))}
-              </select>
+              <SearchableMultiSelect
+                options={jobs.map((job) => ({
+                  value: job._id,
+                  label: job.jobNo,
+                  sublabel: job.jobName,
+                }))}
+                selectedValues={formData.relatedToJobId ? [formData.relatedToJobId] : []}
+                onChange={(selectedJobIds) => {
+                  setFormData({ ...formData, relatedToJobId: selectedJobIds[0] || '' });
+                }}
+                label="Related To Job"
+                placeholder="Search job..."
+                emptyMessage="No jobs available"
+                maxSelection={1}
+              />
             </div>
 
             <div className="md:col-span-2">
