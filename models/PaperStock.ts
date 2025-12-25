@@ -10,6 +10,7 @@ export interface IPaperStock extends Document {
   jobId?: Types.ObjectId | string;
   issuedPaper: number;
   wastage: number;
+  addedStock?: number;
   remaining: number;
   remarks?: string;
   createdBy: string;
@@ -49,6 +50,10 @@ const PaperStockSchema = new Schema<IPaperStock>(
     wastage: {
       type: Number,
       required: true,
+      default: 0,
+    },
+    addedStock: {
+      type: Number,
       default: 0,
     },
     remaining: {

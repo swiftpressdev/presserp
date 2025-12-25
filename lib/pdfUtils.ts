@@ -1584,6 +1584,7 @@ interface PaperStockPDFData {
     jobName?: string;
     issuedPaper: number;
     wastage: number;
+    addedStock?: number;
     remaining: number;
     remarks?: string;
   }>;
@@ -1595,78 +1596,134 @@ export async function generatePaperStockPDF(data: PaperStockPDFData) {
 
   // Vertical offset when letterhead is present
   const letterheadOffset = assets.letterhead ? 40 : 0;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginBottom = 30; // Space for footer/company assets
 
-  // Add letterhead background if configured
+  // Helper function to add header and paper details
+  const addHeaderAndDetails = (currentDoc: jsPDF, isFirstPage: boolean) => {
+    if (isFirstPage && assets.letterhead) {
+      // Letterhead is already added on first page
+    } else if (!isFirstPage) {
+      // Add letterhead on subsequent pages if configured
+      if (assets.letterhead) {
+        // We'll add it in the main flow
+      }
+    }
+
+    if (isFirstPage) {
+      currentDoc.setFontSize(20);
+      currentDoc.text('PAPER STOCK REPORT', pageWidth / 2, 20 + letterheadOffset, { align: 'center' });
+    } else {
+      currentDoc.setFontSize(20);
+      currentDoc.text('PAPER STOCK REPORT (Continued)', pageWidth / 2, 20, { align: 'center' });
+    }
+
+    let yPos = isFirstPage ? 35 + letterheadOffset : 30;
+
+    // Paper details (only on first page)
+    if (isFirstPage) {
+      currentDoc.setFontSize(12);
+      currentDoc.text(`Client: ${data.paper.clientName}`, 20, yPos);
+      yPos += 7;
+      currentDoc.text(`Type: ${data.paper.paperType}`, 20, yPos);
+      yPos += 7;
+      currentDoc.text(`Size: ${data.paper.paperSize} | Weight: ${data.paper.paperWeight}`, 20, yPos);
+      yPos += 7;
+      currentDoc.text(`Original Stock: ${data.paper.originalStock} ${data.paper.units}`, 20, yPos);
+      yPos += 10;
+    } else {
+      yPos += 5;
+    }
+
+    return yPos;
+  };
+
+  // Add letterhead background if configured (first page only)
   if (assets.letterhead) {
     await addLetterheadBackground(doc, assets.letterhead);
   }
 
-  doc.setFontSize(20);
-  doc.text('PAPER STOCK REPORT', 105, 20 + letterheadOffset, { align: 'center' });
+  let startY = addHeaderAndDetails(doc, true);
+  let currentPage = 1;
+  let entryIndex = 0;
 
-  let yPos = 35 + letterheadOffset;
-  doc.setFontSize(10);
+  // Stock entries table with pagination
+  while (entryIndex < data.stockEntries.length) {
+    // Calculate how many entries can fit on current page
+    const remainingSpace = pageHeight - startY - marginBottom;
+    const estimatedRowHeight = 7;
+    const maxRows = Math.floor(remainingSpace / estimatedRowHeight) - 1; // -1 for header row
 
-  // Paper details
-  doc.setFontSize(12);
-  doc.text(`Client: ${data.paper.clientName}`, 20, yPos);
-  yPos += 7;
-  doc.text(`Type: ${data.paper.paperType}`, 20, yPos);
-  yPos += 7;
-  doc.text(`Size: ${data.paper.paperSize} | Weight: ${data.paper.paperWeight}`, 20, yPos);
-  yPos += 7;
-  doc.text(`Original Stock: ${data.paper.originalStock} ${data.paper.units}`, 20, yPos);
-  yPos += 10;
-
-  // Stock entries table
-  const tableData = data.stockEntries.map((entry, index) => {
-    const remaining = index === 0
-      ? data.paper.originalStock - entry.issuedPaper - entry.wastage
-      : (data.stockEntries[index - 1].remaining - entry.issuedPaper - entry.wastage);
+    // Get entries for current page
+    const entriesForPage = data.stockEntries.slice(entryIndex, entryIndex + maxRows);
     
-    return [
-      entry.date,
-      entry.jobNo || '-',
-      entry.jobName || '-',
-      entry.issuedPaper.toString(),
-      entry.wastage.toString(),
-      remaining.toString(),
-      entry.remarks || '-',
-    ];
-  });
+    const tableData = entriesForPage.map((entry) => {
+      return [
+        entry.date,
+        entry.jobNo || '-',
+        entry.jobName || '-',
+        entry.issuedPaper.toString(),
+        entry.wastage.toString(),
+        (entry.addedStock && entry.addedStock > 0) ? `+${entry.addedStock}` : '-',
+        entry.remaining.toString(),
+        entry.remarks || '-',
+      ];
+    });
 
-  autoTable(doc, {
-    startY: yPos,
-    head: [['Date', 'Job No', 'Job Name', 'Issued Paper', 'Wastage', 'Remaining', 'Remarks']],
-    body: tableData,
-    theme: 'grid',
-    margin: { left: 20, right: 20 },
-    headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
-    bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
-    styles: { fontSize: 9, lineWidth: 0.2, lineColor: [0, 0, 0] },
-    tableLineWidth: 0.2,
-    tableLineColor: [0, 0, 0],
-    columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 20, halign: 'right' },
-      4: { cellWidth: 20, halign: 'right' },
-      5: { cellWidth: 20, halign: 'right' },
-      6: { cellWidth: 30 },
-    },
-  });
+    // Calculate available width (A4 width is 210mm, minus margins)
+    const availableWidth = pageWidth - 40; // 20mm margin on each side
+    
+    autoTable(doc, {
+      startY: startY,
+      head: [['Date', 'Job No', 'Job Name', 'Issued Paper', 'Wastage', 'Added Stock', 'Remaining', 'Remarks']],
+      body: tableData,
+      theme: 'grid',
+      margin: { left: 20, right: 20 },
+      headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2 },
+      styles: { fontSize: 8, lineWidth: 0.2, lineColor: [0, 0, 0] },
+      tableLineWidth: 0.2,
+      tableLineColor: [0, 0, 0],
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.12 }, // Date
+        1: { cellWidth: availableWidth * 0.11 }, // Job No
+        2: { cellWidth: availableWidth * 0.15 }, // Job Name
+        3: { cellWidth: availableWidth * 0.11, halign: 'right' }, // Issued Paper
+        4: { cellWidth: availableWidth * 0.11, halign: 'right' }, // Wastage
+        5: { cellWidth: availableWidth * 0.11, halign: 'right' }, // Added Stock
+        6: { cellWidth: availableWidth * 0.11, halign: 'right' }, // Remaining
+        7: { cellWidth: availableWidth * 0.18 }, // Remarks
+      },
+    });
 
-  const finalY = (doc as any).lastAutoTable.finalY || yPos + 20;
-  const currentRemaining = data.stockEntries.length > 0
-    ? data.stockEntries[data.stockEntries.length - 1].remaining
-    : data.paper.originalStock;
+    entryIndex += entriesForPage.length;
+    const finalY = (doc as any).lastAutoTable.finalY || startY + 20;
 
-  doc.setFontSize(10);
-  doc.text(`Current Remaining: ${currentRemaining} ${data.paper.units}`, 20, finalY + 10);
+    // Check if we need another page
+    if (entryIndex < data.stockEntries.length) {
+      doc.addPage();
+      currentPage++;
+      
+      // Add letterhead on new page if configured
+      if (assets.letterhead) {
+        await addLetterheadBackground(doc, assets.letterhead);
+      }
+      
+      startY = addHeaderAndDetails(doc, false);
+    } else {
+      // Last page - add summary and company assets
+      const currentRemaining = data.stockEntries.length > 0
+        ? data.stockEntries[data.stockEntries.length - 1].remaining
+        : data.paper.originalStock;
 
-  // Add company assets (logo, stamp, signature)
-  await addCompanyAssets(doc, assets, finalY + 10);
+      doc.setFontSize(10);
+      doc.text(`Current Remaining: ${currentRemaining} ${data.paper.units}`, 20, finalY + 10);
+
+      // Add company assets (logo, stamp, signature)
+      await addCompanyAssets(doc, assets, finalY + 10);
+    }
+  }
 
   doc.save(`Paper-Stock-${data.paper.clientName}-${data.paper.paperSize}.pdf`);
 }
