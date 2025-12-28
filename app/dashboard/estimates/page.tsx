@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { generateEstimatePDF } from '@/lib/pdfUtils';
@@ -61,6 +62,26 @@ export default function EstimatesPage() {
   const router = useRouter();
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'estimateNumber', label: 'Estimate No', type: 'text' },
+    { key: 'estimateDate', label: 'Estimate Date', type: 'date' },
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    { key: 'jobNo', label: 'Job No', type: 'text' },
+    { key: 'paperSize', label: 'Paper Size', type: 'text' },
+    {
+      key: 'vatType',
+      label: 'VAT Type',
+      type: 'select',
+      options: [
+        { value: 'excluded', label: 'Excluded' },
+        { value: 'included', label: 'Included' },
+        { value: 'none', label: 'None' },
+      ],
+    },
+    { key: 'grandTotal', label: 'Grand Total', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -156,6 +177,56 @@ export default function EstimatesPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredEstimates = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return estimates;
+    }
+
+    return estimates.filter((estimate) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if (key === 'grandTotal' && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const total = estimate.grandTotal;
+          if (min !== undefined && min !== '' && total < Number(min)) return false;
+          if (max !== undefined && max !== '' && total > Number(max)) return false;
+          return true;
+        }
+
+        if (key === 'clientName') {
+          const clientName = typeof estimate.clientId === 'object' ? estimate.clientId.clientName : '';
+          return clientName.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        if (key === 'jobNo') {
+          const jobIds = Array.isArray(estimate.jobId) ? estimate.jobId : [estimate.jobId];
+          const jobNumbers = jobIds.map((j: any) => (typeof j === 'object' ? j.jobNo : '')).join(' ');
+          return jobNumbers.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        if (key === 'estimateDate') {
+          return estimate.estimateDate === searchValue;
+        }
+
+        const estimateValue = (estimate as any)[key]?.toString().toLowerCase() || '';
+        return estimateValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [estimates, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -177,11 +248,19 @@ export default function EstimatesPage() {
           </Link>
         </div>
 
+        {!loading && estimates.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading estimates...</div>
-        ) : estimates.length === 0 ? (
+        ) : filteredEstimates.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No estimates found. Create your first estimate.</p>
+            <p className="text-gray-500">
+              {estimates.length === 0
+                ? 'No estimates found. Create your first estimate.'
+                : 'No estimates match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -212,7 +291,7 @@ export default function EstimatesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {estimates.map((estimate) => (
+                {filteredEstimates.map((estimate) => (
                   <tr key={estimate._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {estimate.estimateNumber}

@@ -63,7 +63,7 @@ export interface IJob extends Document {
   stitch?: StitchType;
   stitchOther?: string;
   additional?: AdditionalService[];
-  relatedToJobId?: Types.ObjectId | string;
+  relatedToJobId?: Types.ObjectId[] | string[];
   remarks?: string;
   specialInstructions?: string;
   createdBy: string;
@@ -273,7 +273,7 @@ const JobSchema = new Schema<IJob>(
       enum: Object.values(AdditionalService),
     },
     relatedToJobId: {
-      type: Schema.Types.ObjectId,
+      type: [Schema.Types.ObjectId],
       ref: 'Job',
     },
     remarks: {

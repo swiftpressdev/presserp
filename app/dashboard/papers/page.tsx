@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { PaperType } from '@/lib/types';
+import { PaperType, PaperUnits } from '@/lib/types';
 
 interface Paper {
   _id: string;
@@ -24,6 +25,26 @@ export default function PapersPage() {
   const router = useRouter();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    {
+      key: 'paperType',
+      label: 'Paper Type',
+      type: 'select',
+      options: Object.values(PaperType).map((type) => ({ value: type, label: type })),
+    },
+    { key: 'paperSize', label: 'Paper Size', type: 'text' },
+    { key: 'paperWeight', label: 'Paper Weight', type: 'text' },
+    {
+      key: 'units',
+      label: 'Units',
+      type: 'select',
+      options: Object.values(PaperUnits).map((unit) => ({ value: unit, label: unit })),
+    },
+    { key: 'originalStock', label: 'Stock', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -81,6 +102,45 @@ export default function PapersPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredPapers = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return papers;
+    }
+
+    return papers.filter((paper) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if (key === 'originalStock' && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const stock = paper.originalStock;
+          if (min !== undefined && min !== '' && stock < Number(min)) return false;
+          if (max !== undefined && max !== '' && stock > Number(max)) return false;
+          return true;
+        }
+
+        const paperValue = (paper as any)[key]?.toString().toLowerCase() || '';
+        if (key === 'paperType' && paper.paperType === 'Other' && paper.paperTypeOther) {
+          const displayType = paper.paperTypeOther.toLowerCase();
+          return displayType.includes(searchValue.toString().toLowerCase());
+        }
+        return paperValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [papers, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,11 +162,19 @@ export default function PapersPage() {
           </Link>
         </div>
 
+        {!loading && papers.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading papers...</div>
-        ) : papers.length === 0 ? (
+        ) : filteredPapers.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No papers found. Create your first paper.</p>
+            <p className="text-gray-500">
+              {papers.length === 0
+                ? 'No papers found. Create your first paper.'
+                : 'No papers match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -137,7 +205,7 @@ export default function PapersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {papers.map((paper) => (
+                {filteredPapers.map((paper) => (
                   <tr key={paper._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {paper.clientName}

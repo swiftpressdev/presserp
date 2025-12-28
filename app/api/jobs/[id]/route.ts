@@ -68,7 +68,7 @@ const updateJobSchema = z.object({
   stitch: z.nativeEnum(StitchType).optional(),
   stitchOther: z.string().optional(),
   additional: z.array(z.nativeEnum(AdditionalService)).optional(),
-  relatedToJobId: z.string().optional(),
+  relatedToJobId: z.array(z.string()).optional(),
   remarks: z.string().optional(),
   specialInstructions: z.string().optional(),
 }).refine((data) => {
@@ -278,40 +278,93 @@ export async function PUT(
       // Check if paper details changed
       const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
       
-      // Only create new stock entries if paper details changed
+      // Only update stock entries if paper details changed
       if (paperDetailsChanged) {
         const jobDate = validatedData.jobDate || getCurrentBSDate();
         
         for (const paperDetail of validatedData.paperDetails) {
           const paperId = paperDetail.paperId;
-          // Get current remaining stock for this paper
-          const stockEntries = await PaperStock.find({ adminId, paperId })
-            .sort({ date: -1, createdAt: -1 })
-            .limit(1);
           
-          const paper = await Paper.findById(paperId);
-          const currentRemaining = stockEntries.length > 0 
-            ? stockEntries[0].remaining 
-            : (paper?.originalStock || 0);
-
+          // Find existing stock entry for this job and paper
+          const existingStockEntry = await PaperStock.findOne({ 
+            adminId, 
+            paperId,
+            jobId: job._id 
+          });
+          
           const issuedPaper = paperDetail.issuedQuantity || 0;
           const wastage = paperDetail.wastage || 0;
-          const remaining = currentRemaining - issuedPaper - wastage;
-
-          // Create stock entry
-          await PaperStock.create({
-            adminId,
-            paperId,
-            date: jobDate,
-            jobNo: existingJob.jobNo,
-            jobName: validatedData.jobName,
-            jobId: job._id,
-            issuedPaper,
-            wastage,
-            remaining: Math.max(0, remaining), // Ensure non-negative
-            remarks: `Auto-deducted for job ${existingJob.jobNo}`,
-            createdBy: user.email || user.id,
-          });
+          
+          if (existingStockEntry) {
+            // Update existing stock entry
+            // First, we need to recalculate from the previous entry
+            const allEntries = await PaperStock.find({ adminId, paperId })
+              .sort({ date: 1, createdAt: 1 });
+            
+            const entryIndex = allEntries.findIndex(e => e._id.toString() === existingStockEntry._id.toString());
+            
+            let previousRemaining: number;
+            if (entryIndex === 0) {
+              const paper = await Paper.findById(paperId);
+              previousRemaining = paper?.originalStock || 0;
+            } else {
+              previousRemaining = allEntries[entryIndex - 1].remaining;
+            }
+            
+            const newRemaining = previousRemaining - issuedPaper - wastage;
+            
+            // Update the stock entry
+            await PaperStock.findByIdAndUpdate(existingStockEntry._id, {
+              date: jobDate,
+              jobName: validatedData.jobName,
+              issuedPaper,
+              wastage,
+              remaining: Math.max(0, newRemaining),
+              remarks: `Auto-deducted for job ${existingJob.jobNo}`,
+            });
+            
+            // Recalculate all subsequent entries
+            let currentRemaining = newRemaining;
+            for (let i = entryIndex + 1; i < allEntries.length; i++) {
+              const entry = allEntries[i];
+              const entryAddedStock = entry.addedStock || 0;
+              if (entryAddedStock > 0) {
+                currentRemaining = currentRemaining + entryAddedStock;
+              } else {
+                currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+              }
+              await PaperStock.findByIdAndUpdate(entry._id, {
+                remaining: Math.max(0, currentRemaining),
+              });
+            }
+          } else {
+            // No existing entry, create new one
+            const stockEntries = await PaperStock.find({ adminId, paperId })
+              .sort({ date: -1, createdAt: -1 })
+              .limit(1);
+            
+            const paper = await Paper.findById(paperId);
+            const currentRemaining = stockEntries.length > 0 
+              ? stockEntries[0].remaining 
+              : (paper?.originalStock || 0);
+            
+            const remaining = currentRemaining - issuedPaper - wastage;
+            
+            // Create stock entry
+            await PaperStock.create({
+              adminId,
+              paperId,
+              date: jobDate,
+              jobNo: existingJob.jobNo,
+              jobName: validatedData.jobName,
+              jobId: job._id,
+              issuedPaper,
+              wastage,
+              remaining: Math.max(0, remaining),
+              remarks: `Auto-deducted for job ${existingJob.jobNo}`,
+              createdBy: user.email || user.id,
+            });
+          }
         }
       }
     }

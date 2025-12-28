@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatBSDate } from '@/lib/dateUtils';
@@ -59,7 +60,7 @@ interface Job {
   stitch?: string;
   stitchOther?: string;
   additional?: string[];
-  relatedToJobId?: string | { _id: string; jobNo: string };
+  relatedToJobId?: string | string[] | { _id: string; jobNo: string } | Array<{ _id: string; jobNo: string; jobName?: string }>;
   remarks?: string;
   specialInstructions?: string;
 }
@@ -85,6 +86,17 @@ export default function JobsPage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'jobNo', label: 'Job No', type: 'text' },
+    { key: 'jobName', label: 'Job Name', type: 'text' },
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    { key: 'jobDate', label: 'Job Date', type: 'date' },
+    { key: 'deliveryDate', label: 'Delivery Date', type: 'date' },
+    { key: 'totalPages', label: 'Total Pages', type: 'numberRange' },
+    { key: 'quantity', label: 'Quantity', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -130,7 +142,12 @@ export default function JobsPage() {
       // Get paperType from job if available, otherwise from paperId
       const finalPaperType = (job as any).paperType || (paperType === 'Other' && paperTypeOther ? paperTypeOther : paperType) || paperName || '-';
       const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '';
-      const relatedToJobNo = typeof job.relatedToJobId === 'object' ? job.relatedToJobId.jobNo : undefined;
+      const relatedToJobNos = job.relatedToJobId
+        ? (Array.isArray(job.relatedToJobId)
+          ? job.relatedToJobId.map((r: any) => typeof r === 'object' ? r.jobNo : r).filter(Boolean)
+          : (typeof job.relatedToJobId === 'object' ? [job.relatedToJobId.jobNo] : []))
+        : [];
+      const relatedToJobNo = relatedToJobNos.length > 0 ? relatedToJobNos.join(', ') : undefined;
       
       // Format job types with (Cover) for Outer
       const formattedJobTypes = job.jobTypes.map(type => 
@@ -210,6 +227,51 @@ export default function JobsPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredJobs = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return jobs;
+    }
+
+    return jobs.filter((job) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if ((key === 'totalPages' || key === 'quantity') && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const jobValue = (job as any)[key];
+          if (min !== undefined && min !== '' && jobValue < Number(min)) return false;
+          if (max !== undefined && max !== '' && jobValue > Number(max)) return false;
+          return true;
+        }
+
+        if (key === 'clientName') {
+          const clientName = typeof job.clientId === 'object' ? job.clientId.clientName : '';
+          return clientName.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        if (key === 'jobDate' || key === 'deliveryDate') {
+          const jobDate = job[key as 'jobDate' | 'deliveryDate'];
+          return jobDate === searchValue;
+        }
+
+        const jobValue = (job as any)[key]?.toString().toLowerCase() || '';
+        return jobValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [jobs, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -231,11 +293,17 @@ export default function JobsPage() {
           </Link>
         </div>
 
+        {!loading && jobs.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading jobs...</div>
-        ) : jobs.length === 0 ? (
+        ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No jobs found. Create your first job.</p>
+            <p className="text-gray-500">
+              {jobs.length === 0 ? 'No jobs found. Create your first job.' : 'No jobs match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -266,7 +334,7 @@ export default function JobsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {jobs.map((job) => (
+                {filteredJobs.map((job) => (
                   <tr key={job._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {job.jobNo}

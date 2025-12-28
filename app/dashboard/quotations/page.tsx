@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { generateQuotationPDF } from '@/lib/pdfUtils';
@@ -33,6 +34,25 @@ export default function QuotationsPage() {
   const router = useRouter();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'quotationSN', label: 'Quotation No', type: 'text' },
+    { key: 'partyName', label: 'Party Name', type: 'text' },
+    { key: 'phoneNumber', label: 'Phone Number', type: 'text' },
+    { key: 'address', label: 'Address', type: 'text' },
+    {
+      key: 'vatType',
+      label: 'VAT Type',
+      type: 'select',
+      options: [
+        { value: 'excluded', label: 'Excluded' },
+        { value: 'included', label: 'Included' },
+        { value: 'none', label: 'None' },
+      ],
+    },
+    { key: 'grandTotal', label: 'Grand Total', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -100,6 +120,41 @@ export default function QuotationsPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredQuotations = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return quotations;
+    }
+
+    return quotations.filter((quotation) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if (key === 'grandTotal' && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const total = quotation.grandTotal;
+          if (min !== undefined && min !== '' && total < Number(min)) return false;
+          if (max !== undefined && max !== '' && total > Number(max)) return false;
+          return true;
+        }
+
+        const quotationValue = (quotation as any)[key]?.toString().toLowerCase() || '';
+        return quotationValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [quotations, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -121,12 +176,18 @@ export default function QuotationsPage() {
           </Link>
         </div>
 
+        {!loading && quotations.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading quotations...</div>
-        ) : quotations.length === 0 ? (
+        ) : filteredQuotations.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
             <p className="text-gray-500">
-              No quotations found. Create your first quotation.
+              {quotations.length === 0
+                ? 'No quotations found. Create your first quotation.'
+                : 'No quotations match your search criteria.'}
             </p>
           </div>
         ) : (
@@ -152,7 +213,7 @@ export default function QuotationsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {quotations.map((quotation) => (
+                {filteredQuotations.map((quotation) => (
                   <tr key={quotation._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {quotation.quotationSN}

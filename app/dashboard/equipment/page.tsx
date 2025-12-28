@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatBSDate } from '@/lib/dateUtils';
@@ -22,6 +23,19 @@ export default function EquipmentPage() {
   const router = useRouter();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'equipmentName', label: 'Equipment Name', type: 'text' },
+    { key: 'size', label: 'Size', type: 'text' },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      options: Object.values(EquipmentStatus).map((status) => ({ value: status, label: status })),
+    },
+    { key: 'lastMaintainedDate', label: 'Last Maintained', type: 'date' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,6 +93,34 @@ export default function EquipmentPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredEquipment = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return equipment;
+    }
+
+    return equipment.filter((item) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || searchValue === '') return true;
+
+        if (key === 'lastMaintainedDate') {
+          return item.lastMaintainedDate === searchValue;
+        }
+
+        const itemValue = (item as any)[key]?.toString().toLowerCase() || '';
+        return itemValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [equipment, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -100,11 +142,19 @@ export default function EquipmentPage() {
           </Link>
         </div>
 
+        {!loading && equipment.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading equipment...</div>
-        ) : equipment.length === 0 ? (
+        ) : filteredEquipment.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No equipment found. Create your first equipment.</p>
+            <p className="text-gray-500">
+              {equipment.length === 0
+                ? 'No equipment found. Create your first equipment.'
+                : 'No equipment match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -129,7 +179,7 @@ export default function EquipmentPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {equipment.map((item) => (
+                {filteredEquipment.map((item) => (
                   <tr key={item._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {item.equipmentName}

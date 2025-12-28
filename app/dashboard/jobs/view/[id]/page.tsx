@@ -27,7 +27,7 @@ interface Job {
   clientId: string | { _id: string; clientName: string };
   paperId: string | { _id: string; paperName: string };
   machineId: string | { _id: string; equipmentName: string };
-  relatedToJobId?: string | { _id: string; jobNo: string };
+  relatedToJobId?: string | string[] | { _id: string; jobNo: string } | Array<{ _id: string; jobNo: string; jobName?: string }>;
   jobDate: string;
   deliveryDate: string;
   jobTypes: string[];
@@ -136,11 +136,11 @@ export default function ViewJobPage() {
         : (job.paperId as any).paperType)
     : ((job as any).paperType || '-');
   const machineName = typeof job.machineId === 'object' ? job.machineId.equipmentName : '-';
-  const relatedToJobNo = job.relatedToJobId
-    ? typeof job.relatedToJobId === 'object'
-      ? job.relatedToJobId.jobNo
-      : '-'
-    : undefined;
+  const relatedToJobs = job.relatedToJobId
+    ? (Array.isArray(job.relatedToJobId)
+      ? job.relatedToJobId.map((r: any) => typeof r === 'object' ? r.jobNo : r).filter(Boolean)
+      : (typeof job.relatedToJobId === 'object' ? [job.relatedToJobId.jobNo] : []))
+    : [];
 
   const formattedJobTypes = job.jobTypes.map((type) =>
     type === JobType.OUTER ? `${type} (Cover)` : type
@@ -440,11 +440,11 @@ export default function ViewJobPage() {
               </div>
             )}
 
-            {relatedToJobNo && (
+            {relatedToJobs.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Related To Job</label>
+                <label className="block text-sm font-medium text-gray-700">Related To Job{relatedToJobs.length > 1 ? 's' : ''}</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {relatedToJobNo}
+                  {relatedToJobs.join(', ')}
                 </div>
               </div>
             )}
