@@ -105,7 +105,7 @@ export default function EditJobPage() {
     stitch: '' as StitchType | '',
     stitchOther: '',
     additional: [] as AdditionalService[],
-    relatedToJobId: '',
+    relatedToJobId: [] as string[],
     remarks: '',
     specialInstructions: '',
   });
@@ -168,8 +168,10 @@ export default function EditJobPage() {
         ? (typeof job.machineId === 'object' ? job.machineId._id?.toString() || '' : job.machineId?.toString() || '')
         : '';
       const relatedToJobId = job.relatedToJobId 
-        ? (typeof job.relatedToJobId === 'object' ? job.relatedToJobId._id?.toString() || '' : job.relatedToJobId?.toString() || '')
-        : '';
+        ? (Array.isArray(job.relatedToJobId) 
+          ? job.relatedToJobId.map((r: any) => typeof r === 'object' ? r._id?.toString() || '' : r?.toString() || '').filter(Boolean)
+          : (typeof job.relatedToJobId === 'object' ? [job.relatedToJobId._id?.toString() || ''] : [job.relatedToJobId?.toString() || '']).filter(Boolean))
+        : [];
       const paperIds = job.paperIds && Array.isArray(job.paperIds)
         ? job.paperIds
             .filter((p: any) => p != null) // Filter out null/undefined
@@ -1045,14 +1047,13 @@ export default function EditJobPage() {
                   label: job.jobNo,
                   sublabel: job.jobName,
                 }))}
-                selectedValues={formData.relatedToJobId ? [formData.relatedToJobId] : []}
+                selectedValues={Array.isArray(formData.relatedToJobId) ? formData.relatedToJobId : (formData.relatedToJobId ? [formData.relatedToJobId] : [])}
                 onChange={(selectedJobIds) => {
-                  setFormData({ ...formData, relatedToJobId: selectedJobIds[0] || '' });
+                  setFormData({ ...formData, relatedToJobId: selectedJobIds });
                 }}
                 label="Related To Job"
                 placeholder="Search job..."
                 emptyMessage="No jobs available"
-                maxSelection={1}
               />
             </div>
 

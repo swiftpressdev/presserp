@@ -103,7 +103,7 @@ export default function CreateJobPage() {
     stitch: '' as StitchType | '',
     stitchOther: '',
     additional: [] as AdditionalService[],
-    relatedToJobId: '',
+    relatedToJobId: [] as string[],
     remarks: '',
     specialInstructions: '',
   });
@@ -907,14 +907,13 @@ export default function CreateJobPage() {
                   label: job.jobNo,
                   sublabel: job.jobName,
                 }))}
-                selectedValues={formData.relatedToJobId ? [formData.relatedToJobId] : []}
+                selectedValues={formData.relatedToJobId || []}
                 onChange={(selectedJobIds) => {
-                  setFormData({ ...formData, relatedToJobId: selectedJobIds[0] || '' });
+                  setFormData({ ...formData, relatedToJobId: selectedJobIds });
                 }}
                 label="Related To Job"
                 placeholder="Search job..."
                 emptyMessage="No jobs available"
-                maxSelection={1}
               />
             </div>
 

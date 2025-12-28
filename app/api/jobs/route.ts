@@ -69,7 +69,7 @@ const jobSchema = z.object({
   stitch: z.nativeEnum(StitchType).optional(),
   stitchOther: z.string().optional(),
   additional: z.array(z.nativeEnum(AdditionalService)).optional(),
-  relatedToJobId: z.string().optional(),
+  relatedToJobId: z.array(z.string()).optional(),
   remarks: z.string().optional(),
   specialInstructions: z.string().optional(),
 }).refine((data) => {

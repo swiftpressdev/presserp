@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatBSDate } from '@/lib/dateUtils';
@@ -24,6 +25,24 @@ export default function ChallanReportsPage() {
   const router = useRouter();
   const [reports, setReports] = useState<ChallanReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'reportName', label: 'Report Name', type: 'text' },
+    {
+      key: 'filterType',
+      label: 'Filter Type',
+      type: 'select',
+      options: [
+        { value: 'client', label: 'Client' },
+        { value: 'particular', label: 'Particular' },
+      ],
+    },
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    { key: 'particularName', label: 'Particular Name', type: 'text' },
+    { key: 'totalIssued', label: 'Total Issued', type: 'numberRange' },
+    { key: 'finalOrder', label: 'Final Order', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -77,6 +96,46 @@ export default function ChallanReportsPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredReports = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return reports;
+    }
+
+    return reports.filter((report) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if ((key === 'totalIssued' || key === 'finalOrder') && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const reportValue = (report as any)[key] || 0;
+          if (min !== undefined && min !== '' && reportValue < Number(min)) return false;
+          if (max !== undefined && max !== '' && reportValue > Number(max)) return false;
+          return true;
+        }
+
+        if (key === 'clientName') {
+          const clientName = report.clientId?.clientName || '';
+          return clientName.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        const reportValue = (report as any)[key]?.toString().toLowerCase() || '';
+        return reportValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [reports, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -98,11 +157,19 @@ export default function ChallanReportsPage() {
           </Link>
         </div>
 
+        {!loading && reports.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading reports...</div>
-        ) : reports.length === 0 ? (
+        ) : filteredReports.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No reports found. Create your first challan report.</p>
+            <p className="text-gray-500">
+              {reports.length === 0
+                ? 'No reports found. Create your first challan report.'
+                : 'No reports match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -133,7 +200,7 @@ export default function ChallanReportsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {reports.map((report) => (
+                {filteredReports.map((report) => (
                   <tr key={report._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {report.reportName}

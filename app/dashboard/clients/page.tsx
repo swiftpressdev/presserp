@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -21,6 +22,15 @@ export default function ClientsPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    { key: 'mobile', label: 'Mobile', type: 'text' },
+    { key: 'emailAddress', label: 'Email', type: 'text' },
+    { key: 'contactPerson', label: 'Contact Person', type: 'text' },
+    { key: 'address', label: 'Address', type: 'text' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -78,6 +88,30 @@ export default function ClientsPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredClients = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return clients;
+    }
+
+    return clients.filter((client) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || searchValue === '') return true;
+
+        const clientValue = (client as any)[key]?.toString().toLowerCase() || '';
+        return clientValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [clients, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -99,11 +133,19 @@ export default function ClientsPage() {
           </Link>
         </div>
 
+        {!loading && clients.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading clients...</div>
-        ) : clients.length === 0 ? (
+        ) : filteredClients.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No clients found. Create your first client.</p>
+            <p className="text-gray-500">
+              {clients.length === 0
+                ? 'No clients found. Create your first client.'
+                : 'No clients match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -128,7 +170,7 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {clients.map((client) => (
+                {filteredClients.map((client) => (
                   <tr key={client._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {client.clientName}

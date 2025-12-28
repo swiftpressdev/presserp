@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import AdvancedSearchBar, { SearchField } from '@/components/AdvancedSearchBar';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { generateChallanPDF } from '@/lib/pdfUtils';
@@ -27,6 +28,16 @@ export default function ChallansPage() {
   const router = useRouter();
   const [challans, setChallans] = useState<Challan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useState<Record<string, any>>({});
+
+  const searchFields: SearchField[] = [
+    { key: 'challanNumber', label: 'Challan No', type: 'text' },
+    { key: 'challanDate', label: 'Challan Date', type: 'date' },
+    { key: 'clientName', label: 'Client Name', type: 'text' },
+    { key: 'jobNo', label: 'Job No', type: 'text' },
+    { key: 'destination', label: 'Destination', type: 'text' },
+    { key: 'totalUnits', label: 'Total Units', type: 'numberRange' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -106,6 +117,59 @@ export default function ChallansPage() {
     }
   };
 
+  const handleSearch = (params: Record<string, any>) => {
+    setSearchParams(params);
+  };
+
+  const handleReset = () => {
+    setSearchParams({});
+  };
+
+  const filteredChallans = useMemo(() => {
+    if (Object.keys(searchParams).length === 0) {
+      return challans;
+    }
+
+    return challans.filter((challan) => {
+      return Object.keys(searchParams).every((key) => {
+        const searchValue = searchParams[key];
+        if (!searchValue || (typeof searchValue === 'object' && Object.values(searchValue).every((v) => !v))) {
+          return true;
+        }
+
+        if (key === 'totalUnits' && typeof searchValue === 'object') {
+          const min = searchValue.min;
+          const max = searchValue.max;
+          const units = challan.totalUnits;
+          if (min !== undefined && min !== '' && units < Number(min)) return false;
+          if (max !== undefined && max !== '' && units > Number(max)) return false;
+          return true;
+        }
+
+        if (key === 'clientName') {
+          const clientName = challan.clientId
+            ? typeof challan.clientId === 'object'
+              ? challan.clientId.clientName
+              : ''
+            : '';
+          return clientName.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        if (key === 'jobNo') {
+          const jobNo = challan.jobId ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : '') : '';
+          return jobNo.toLowerCase().includes(searchValue.toString().toLowerCase());
+        }
+
+        if (key === 'challanDate') {
+          return challan.challanDate === searchValue;
+        }
+
+        const challanValue = (challan as any)[key]?.toString().toLowerCase() || '';
+        return challanValue.includes(searchValue.toString().toLowerCase());
+      });
+    });
+  }, [challans, searchParams]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -127,11 +191,19 @@ export default function ChallansPage() {
           </Link>
         </div>
 
+        {!loading && challans.length > 0 && (
+          <AdvancedSearchBar fields={searchFields} onSearch={handleSearch} onReset={handleReset} />
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading challans...</div>
-        ) : challans.length === 0 ? (
+        ) : filteredChallans.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">No challans found. Create your first challan.</p>
+            <p className="text-gray-500">
+              {challans.length === 0
+                ? 'No challans found. Create your first challan.'
+                : 'No challans match your search criteria.'}
+            </p>
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -159,7 +231,7 @@ export default function ChallansPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {challans.map((challan) => (
+                {filteredChallans.map((challan) => (
                   <tr key={challan._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {challan.challanNumber}
