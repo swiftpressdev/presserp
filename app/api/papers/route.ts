@@ -23,7 +23,25 @@ export async function GET(request: NextRequest) {
 
     const papers = await Paper.find({ adminId }).sort({ createdAt: -1 });
 
-    return NextResponse.json({ papers }, { status: 200 });
+    // Calculate remaining stock for each paper
+    const PaperStock = (await import('@/models/PaperStock')).default;
+    const papersWithRemainingStock = await Promise.all(
+      papers.map(async (paper) => {
+        const stockEntries = await PaperStock.find({ adminId, paperId: paper._id })
+          .sort({ date: 1, createdAt: 1 });
+        
+        const remainingStock = stockEntries.length > 0
+          ? stockEntries[stockEntries.length - 1].remaining
+          : paper.originalStock;
+
+        return {
+          ...paper.toObject(),
+          remainingStock,
+        };
+      })
+    );
+
+    return NextResponse.json({ papers: papersWithRemainingStock }, { status: 200 });
   } catch (error: any) {
     console.error('Get papers error:', error);
     if (error.message === 'Unauthorized') {

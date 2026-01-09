@@ -18,6 +18,7 @@ interface Paper {
   paperWeight: string;
   units: string;
   originalStock: number;
+  remainingStock?: number;
 }
 
 export default function PapersPage() {
@@ -43,7 +44,7 @@ export default function PapersPage() {
       type: 'select',
       options: Object.values(PaperUnits).map((unit) => ({ value: unit, label: unit })),
     },
-    { key: 'originalStock', label: 'Stock', type: 'numberRange' },
+    { key: 'remainingStock', label: 'Stock', type: 'numberRange' },
   ];
 
   useEffect(() => {
@@ -122,10 +123,10 @@ export default function PapersPage() {
           return true;
         }
 
-        if (key === 'originalStock' && typeof searchValue === 'object') {
+        if (key === 'remainingStock' && typeof searchValue === 'object') {
           const min = searchValue.min;
           const max = searchValue.max;
-          const stock = paper.originalStock;
+          const stock = paper.remainingStock ?? paper.originalStock;
           if (min !== undefined && min !== '' && stock < Number(min)) return false;
           if (max !== undefined && max !== '' && stock > Number(max)) return false;
           return true;
@@ -197,7 +198,7 @@ export default function PapersPage() {
                     Units
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Original Stock
+                    Remaining Stock
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -224,8 +225,8 @@ export default function PapersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {paper.units}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {paper.originalStock}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      {paper.remainingStock ?? paper.originalStock}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <Link

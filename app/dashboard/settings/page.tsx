@@ -1007,7 +1007,7 @@ export default function SettingsPage() {
                               }
                               className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                               min="0"
-                              step="0.01"
+                              step="0.00001"
                               placeholder="0"
                             />
                           </td>
@@ -1020,7 +1020,7 @@ export default function SettingsPage() {
                               }
                               className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                               min="0"
-                              step="0.01"
+                              step="0.00001"
                               placeholder="0.00"
                             />
                           </td>
@@ -1159,6 +1159,7 @@ export default function SettingsPage() {
                         type="number"
                         min="0"
                         max="999999"
+                        step="0.00001"
                         value={startingNumber === '' || startingNumber === '0' ? '' : startingNumber}
                         onChange={(e) => {
                           const value = e.target.value;

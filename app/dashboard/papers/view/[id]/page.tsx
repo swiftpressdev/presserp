@@ -17,6 +17,7 @@ interface Paper {
   paperWeight: string;
   units: string;
   originalStock: number;
+  remainingStock?: number;
 }
 
 export default function ViewPaperPage() {
@@ -156,7 +157,14 @@ export default function ViewPaperPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">Original Stock</label>
               <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                {paper.originalStock}
+                {paper.originalStock} {paper.units}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Remaining Stock</label>
+              <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                {paper.remainingStock ?? paper.originalStock} {paper.units}
               </div>
             </div>
           </div>

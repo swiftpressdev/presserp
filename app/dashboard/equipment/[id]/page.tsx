@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import NepaliDatePicker from '@/components/NepaliDatePicker';
 import { EquipmentStatus } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -157,15 +158,13 @@ export default function EditEquipmentPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Last Maintained Date (BS) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
+              <NepaliDatePicker
                 value={formData.lastMaintainedDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, lastMaintainedDate: e.target.value })
+                onChange={(value) =>
+                  setFormData({ ...formData, lastMaintainedDate: value })
                 }
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="YYYY-MM-DD"
+                required
               />
             </div>
           </div>

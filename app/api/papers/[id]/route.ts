@@ -34,7 +34,21 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ paper }, { status: 200 });
+    // Calculate remaining stock
+    const PaperStock = (await import('@/models/PaperStock')).default;
+    const stockEntries = await PaperStock.find({ adminId, paperId: id })
+      .sort({ date: 1, createdAt: 1 });
+    
+    const remainingStock = stockEntries.length > 0
+      ? stockEntries[stockEntries.length - 1].remaining
+      : paper.originalStock;
+
+    const paperWithRemaining = {
+      ...paper.toObject(),
+      remainingStock,
+    };
+
+    return NextResponse.json({ paper: paperWithRemaining }, { status: 200 });
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: error.message }, { status: 403 });
