@@ -70,6 +70,8 @@ export default function EditJobPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [originalData, setOriginalData] = useState<any>(null);
+  const [jobNo, setJobNo] = useState('');
 
   const [formData, setFormData] = useState({
     jobName: '',
@@ -158,6 +160,7 @@ export default function EditJobPage() {
       }
 
       const job = data.job;
+      setJobNo(job.jobNo || '');
       const clientId = job.clientId 
         ? (typeof job.clientId === 'object' ? job.clientId._id?.toString() || '' : job.clientId?.toString() || '')
         : '';
@@ -207,7 +210,7 @@ export default function EditJobPage() {
         });
       }
 
-      setFormData({
+      const initialFormData = {
         jobName: job.jobName || '',
         clientId,
         jobDate: job.jobDate || '',
@@ -244,7 +247,9 @@ export default function EditJobPage() {
         relatedToJobId,
         remarks: job.remarks || '',
         specialInstructions: job.specialInstructions || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch job');
       router.push('/dashboard/jobs');
@@ -433,6 +438,9 @@ export default function EditJobPage() {
 
   const totalPages = formData.totalBWPages + formData.totalColorPages;
 
+  // Check if form has changes
+  const hasChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl">
@@ -440,6 +448,18 @@ export default function EditJobPage() {
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Job Number
+              </label>
+              <input
+                type="text"
+                value={jobNo}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Job Name <span className="text-red-500">*</span>
@@ -1090,8 +1110,8 @@ export default function EditJobPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Job'}
             </button>

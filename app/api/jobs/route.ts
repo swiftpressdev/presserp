@@ -243,21 +243,45 @@ export async function POST(request: NextRequest) {
     if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       const jobDate = validatedData.jobDate || getCurrentBSDate();
       
+      // Process papers sequentially to avoid race conditions when multiple papers share the same date
       for (const paperDetail of validatedData.paperDetails) {
         const paperId = paperDetail.paperId;
-        // Get current remaining stock for this paper
+        
+        // Get all entries sorted by date to find correct insertion position
         const stockEntries = await PaperStock.find({ adminId, paperId })
-          .sort({ date: -1, createdAt: -1 })
-          .limit(1);
+          .sort({ date: 1, createdAt: 1 });
         
         const paper = await Paper.findById(paperId);
-        const currentRemaining = stockEntries.length > 0 
-          ? stockEntries[0].remaining 
-          : (paper?.originalStock || 0);
+        if (!paper) {
+          throw new Error(`Paper not found for paper ID: ${paperId}`);
+        }
+
+        // Calculate previous remaining - get the most recent entry before or at jobDate
+        let previousRemaining: number;
+        if (stockEntries.length === 0) {
+          previousRemaining = paper.originalStock || 0;
+        } else {
+          // Find the last entry with date <= jobDate
+          let lastEntryIndex = -1;
+          for (let i = stockEntries.length - 1; i >= 0; i--) {
+            if (stockEntries[i].date <= jobDate) {
+              lastEntryIndex = i;
+              break;
+            }
+          }
+          
+          if (lastEntryIndex === -1) {
+            // All entries are after jobDate, so start from original stock
+            previousRemaining = paper.originalStock || 0;
+          } else {
+            // Use the remaining from the last entry before or at jobDate
+            previousRemaining = stockEntries[lastEntryIndex].remaining;
+          }
+        }
 
         const issuedPaper = paperDetail.issuedQuantity || 0;
         const wastage = paperDetail.wastage || 0;
-        const remaining = currentRemaining - issuedPaper - wastage;
+        const remaining = previousRemaining - issuedPaper - wastage;
 
         // Create stock entry
         await PaperStock.create({
@@ -273,6 +297,35 @@ export async function POST(request: NextRequest) {
           remarks: `Auto-deducted for job ${jobNo}`,
           createdBy: user.email || user.id,
         });
+
+        // Recalculate all subsequent entries if any exist after this date
+        // Re-read all entries after creation to find ones that need recalculation
+        const allEntriesAfter = await PaperStock.find({ adminId, paperId })
+          .sort({ date: 1, createdAt: 1 });
+        
+        // Find entries that come after the one we just created (by date)
+        const entriesAfterInsertion = allEntriesAfter.filter(e => e.date > jobDate);
+        
+        if (entriesAfterInsertion.length > 0) {
+          // Recalculate entries that come after our inserted entry
+          let currentRemaining = remaining;
+          for (const entry of entriesAfterInsertion) {
+            const entryAddedStock = entry.addedStock || 0;
+            if (entryAddedStock > 0) {
+              currentRemaining = currentRemaining + entryAddedStock;
+            } else {
+              currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
+            }
+            const updatedEntry = await PaperStock.findByIdAndUpdate(
+              entry._id,
+              {
+                remaining: Math.max(0, currentRemaining),
+              },
+              { new: true }
+            );
+            currentRemaining = updatedEntry?.remaining || currentRemaining;
+          }
+        }
       }
     }
 
@@ -293,7 +346,13 @@ export async function POST(request: NextRequest) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Create job error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Log full error details for debugging
+    console.error('Create job error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

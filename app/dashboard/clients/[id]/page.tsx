@@ -25,6 +25,7 @@ export default function EditClientPage() {
   const clientId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
   const [formData, setFormData] = useState({
     clientName: '',
     address: '',
@@ -57,7 +58,7 @@ export default function EditClientPage() {
         throw new Error(data.error || 'Failed to fetch client');
       }
 
-      setFormData({
+      const initialFormData = {
         clientName: data.client.clientName || '',
         address: data.client.address || '',
         emailAddress: data.client.emailAddress || '',
@@ -66,7 +67,9 @@ export default function EditClientPage() {
         department: data.client.department || '',
         contactEmailAddress: data.client.contactEmailAddress || '',
         contactTelephone: data.client.contactTelephone || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch client');
       router.push('/dashboard/clients');
@@ -120,6 +123,9 @@ export default function EditClientPage() {
       </DashboardLayout>
     );
   }
+
+  // Check if form has changes
+  const hasChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
   return (
     <DashboardLayout>
@@ -226,8 +232,8 @@ export default function EditClientPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Client'}
             </button>

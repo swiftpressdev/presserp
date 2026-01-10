@@ -14,6 +14,12 @@ export default function EditQuotationPage() {
   const quotationId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
+  const [originalParticulars, setOriginalParticulars] = useState<Particular[]>([]);
+  const [originalVatType, setOriginalVatType] = useState<'excluded' | 'included' | 'none'>('none');
+  const [originalHasDiscount, setOriginalHasDiscount] = useState(false);
+  const [originalDiscountPercentage, setOriginalDiscountPercentage] = useState(0);
+  const [quotationSN, setQuotationSN] = useState('');
   const [formData, setFormData] = useState({
     partyName: '',
     address: '',
@@ -48,12 +54,15 @@ export default function EditQuotationPage() {
         throw new Error(data.error || 'Failed to fetch quotation');
       }
 
-      setFormData({
+      setQuotationSN(data.quotation.quotationSN || '');
+      const initialFormData = {
         partyName: data.quotation.partyName || '',
         address: data.quotation.address || '',
         phoneNumber: data.quotation.phoneNumber || '',
         remarks: data.quotation.remarks || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
 
       const convertedParticulars: Particular[] = data.quotation.particulars.map((p: any) => ({
         sn: p.sn || 0,
@@ -63,12 +72,21 @@ export default function EditQuotationPage() {
         amount: p.amount || 0,
       }));
 
-      setParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
+      const finalParticulars = convertedParticulars.length > 0 ? convertedParticulars : [
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
-      ]);
-      setVatType(data.quotation.vatType || 'none');
-      setHasDiscount(data.quotation.hasDiscount || false);
-      setDiscountPercentage(data.quotation.discountPercentage || 0);
+      ];
+      setParticulars(finalParticulars);
+      setOriginalParticulars(JSON.parse(JSON.stringify(finalParticulars)));
+      
+      const finalVatType = data.quotation.vatType || 'none';
+      const finalHasDiscount = data.quotation.hasDiscount || false;
+      const finalDiscountPercentage = data.quotation.discountPercentage || 0;
+      setVatType(finalVatType);
+      setHasDiscount(finalHasDiscount);
+      setDiscountPercentage(finalDiscountPercentage);
+      setOriginalVatType(finalVatType);
+      setOriginalHasDiscount(finalHasDiscount);
+      setOriginalDiscountPercentage(finalDiscountPercentage);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch quotation');
       router.push('/dashboard/quotations');
@@ -147,6 +165,14 @@ export default function EditQuotationPage() {
     );
   }
 
+  // Check if form has changes
+  const formDataChanged = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+  const particularsChanged = JSON.stringify(particulars) !== JSON.stringify(originalParticulars);
+  const vatTypeChanged = vatType !== originalVatType;
+  const hasDiscountChanged = hasDiscount !== originalHasDiscount;
+  const discountPercentageChanged = discountPercentage !== originalDiscountPercentage;
+  const hasChanges = formDataChanged || particularsChanged || vatTypeChanged || hasDiscountChanged || discountPercentageChanged;
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl">
@@ -154,6 +180,18 @@ export default function EditQuotationPage() {
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Quotation SN
+              </label>
+              <input
+                type="text"
+                value={quotationSN}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Party Name <span className="text-red-500">*</span>
@@ -224,8 +262,8 @@ export default function EditQuotationPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Quotation'}
             </button>

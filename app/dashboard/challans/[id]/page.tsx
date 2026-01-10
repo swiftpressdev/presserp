@@ -32,6 +32,9 @@ export default function EditChallanPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [originalData, setOriginalData] = useState<any>(null);
+  const [originalParticulars, setOriginalParticulars] = useState<ChallanParticular[]>([]);
+  const [challanNumber, setChallanNumber] = useState('');
   const [formData, setFormData] = useState({
     challanDate: '',
     clientId: '',
@@ -107,16 +110,19 @@ export default function EditChallanPage() {
       }
 
       const challan = data.challan;
+      setChallanNumber(challan.challanNumber || '');
       const clientId = challan.clientId?._id || challan.clientId || '';
       const jobId = challan.jobId?._id || challan.jobId || '';
 
-      setFormData({
+      const initialFormData = {
         challanDate: challan.challanDate || '',
         clientId: clientId.toString(),
         jobId: jobId.toString(),
         destination: challan.destination || '',
         remarks: challan.remarks || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
 
       const convertedParticulars: ChallanParticular[] = challan.particulars.map((p: any) => ({
         sn: p.sn || 0,
@@ -124,9 +130,11 @@ export default function EditChallanPage() {
         quantity: p.quantity || 0,
       }));
 
-      setParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
+      const finalParticulars = convertedParticulars.length > 0 ? convertedParticulars : [
         { sn: 1, particulars: '', quantity: 0 },
-      ]);
+      ];
+      setParticulars(finalParticulars);
+      setOriginalParticulars(JSON.parse(JSON.stringify(finalParticulars)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch challan');
       router.push('/dashboard/challans');
@@ -234,6 +242,11 @@ export default function EditChallanPage() {
 
   const totalUnits = particulars.reduce((sum, p) => sum + p.quantity, 0);
 
+  // Check if form has changes (including particulars)
+  const particularsChanged = JSON.stringify(particulars) !== JSON.stringify(originalParticulars);
+  const formDataChanged = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+  const hasChanges = formDataChanged || particularsChanged;
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl">
@@ -241,6 +254,18 @@ export default function EditChallanPage() {
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Challan Number
+              </label>
+              <input
+                type="text"
+                value={challanNumber}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Challan Date (BS) <span className="text-red-500">*</span>
@@ -327,8 +352,8 @@ export default function EditChallanPage() {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={saving}
-                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                disabled={saving || !hasChanges}
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Updating...' : 'Update Challan'}
               </button>

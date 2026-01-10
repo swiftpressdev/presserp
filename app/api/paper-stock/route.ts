@@ -66,32 +66,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Paper not found' }, { status: 404 });
     }
 
-    // Get all existing stock entries sorted by date to find the previous remaining
+    // Get all existing stock entries sorted by date to find the correct insertion position
     const allEntries = await PaperStock.find({ adminId, paperId: validatedData.paperId })
       .sort({ date: 1, createdAt: 1 });
     
-    // Calculate remaining based on the last entry or original stock
-    let remaining: number;
+    // Find the correct position for this entry based on date
+    // Entries should be in chronological order
+    let previousRemaining: number;
+    let insertPosition = allEntries.length; // Default to end
     const addedStock = validatedData.addedStock || 0;
     
     if (allEntries.length === 0) {
-      // For new entries, start from original stock
+      // No existing entries - start from original stock
       if (addedStock > 0) {
-        // Adding new stock
-        remaining = (paper.originalStock || 0) + addedStock;
+        previousRemaining = paper.originalStock || 0;
       } else {
-        // Deducting stock
-        remaining = (paper.originalStock || 0) - validatedData.issuedPaper - validatedData.wastage;
+        previousRemaining = paper.originalStock || 0;
       }
     } else {
-      const lastEntry = allEntries[allEntries.length - 1];
-      if (addedStock > 0) {
-        // Adding new stock
-        remaining = lastEntry.remaining + addedStock;
-      } else {
-        // Deducting stock
-        remaining = lastEntry.remaining - validatedData.issuedPaper - validatedData.wastage;
+      // Find where this entry should be inserted based on date
+      // BS dates are in YYYY-MM-DD format, so string comparison works
+      for (let i = 0; i < allEntries.length; i++) {
+        if (allEntries[i].date > validatedData.date) {
+          insertPosition = i;
+          break;
+        }
       }
+
+      if (insertPosition === 0) {
+        // Inserting at the beginning
+        previousRemaining = paper.originalStock || 0;
+      } else {
+        // Inserting after some entries - use the previous entry's remaining
+        previousRemaining = allEntries[insertPosition - 1].remaining;
+      }
+    }
+
+    // Calculate remaining based on the operation type
+    let remaining: number;
+    if (addedStock > 0) {
+      // Adding new stock
+      remaining = previousRemaining + addedStock;
+    } else {
+      // Deducting stock
+      remaining = previousRemaining - validatedData.issuedPaper - validatedData.wastage;
     }
 
     // If jobId is provided, populate job details
@@ -122,6 +140,46 @@ export async function POST(request: NextRequest) {
       createdBy: user.email || user.id,
     });
 
+    // Recalculate all subsequent entries to ensure correctness
+    // This handles cases where the entry is inserted in the middle
+    if (insertPosition < allEntries.length) {
+      // Helper function to recalculate all stock entries for a paper
+      const recalculateStockForPaper = async () => {
+        const allEntriesAfterInsert = await PaperStock.find({ adminId, paperId: validatedData.paperId })
+          .sort({ date: 1, createdAt: 1 });
+
+        // Use fresh data from each update
+        let previousRemaining = paper.originalStock || 0;
+
+        for (let i = 0; i < allEntriesAfterInsert.length; i++) {
+          const entry = allEntriesAfterInsert[i];
+          let currentRemaining: number;
+
+          const entryAddedStock = entry.addedStock || 0;
+          if (entryAddedStock > 0) {
+            // Adding stock
+            currentRemaining = previousRemaining + entryAddedStock;
+          } else {
+            // Deducting stock
+            currentRemaining = previousRemaining - entry.issuedPaper - entry.wastage;
+          }
+
+          const updatedEntry = await PaperStock.findByIdAndUpdate(
+            entry._id,
+            {
+              remaining: Math.max(0, currentRemaining),
+            },
+            { new: true } // Return updated document to get fresh data
+          );
+
+          // Use the updated remaining value for next iteration
+          previousRemaining = updatedEntry?.remaining || currentRemaining;
+        }
+      };
+
+      await recalculateStockForPaper();
+    }
+
     return NextResponse.json(
       { message: 'Stock entry created successfully', stockEntry },
       { status: 201 }
@@ -133,7 +191,13 @@ export async function POST(request: NextRequest) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Create paper stock error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Log full error details for debugging
+    console.error('Create paper stock error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

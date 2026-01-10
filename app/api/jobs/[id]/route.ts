@@ -216,44 +216,57 @@ export async function PUT(
       );
     }
 
-    // Validate stock availability before updating job (only if paper details changed)
+    // Validate stock availability before updating job
     if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
-      const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
+      const newPaperDetails = validatedData.paperDetails;
       
-      // Only validate stock if paper details changed
-      if (paperDetailsChanged) {
-        for (const paperDetail of validatedData.paperDetails) {
-          const paperId = paperDetail.paperId;
-          // Get current remaining stock for this paper
-          const stockEntries = await PaperStock.find({ adminId, paperId })
-            .sort({ date: -1, createdAt: -1 })
-            .limit(1);
-          
-          const paper = await Paper.findById(paperId);
-          if (!paper) {
-            return NextResponse.json(
-              { error: `Paper not found for paper ID: ${paperId}` },
-              { status: 404 }
-            );
-          }
+      // Create a map of old paper details for quick lookup
+      const oldPaperMap = new Map(
+        existingPaperDetails.map(p => [p.paperId, { issued: p.issuedQuantity || 0, wastage: p.wastage || 0 }])
+      );
 
-          const currentRemaining = stockEntries.length > 0 
-            ? stockEntries[0].remaining 
-            : (paper.originalStock || 0);
+      for (const paperDetail of newPaperDetails) {
+        const paperId = paperDetail.paperId;
+        const issuedPaper = paperDetail.issuedQuantity || 0;
+        const wastage = paperDetail.wastage || 0;
+        const totalRequired = issuedPaper + wastage;
 
-          const issuedPaper = paperDetail.issuedQuantity || 0;
-          const wastage = paperDetail.wastage || 0;
-          const totalRequired = issuedPaper + wastage;
+        // Get current remaining stock for this paper
+        const stockEntries = await PaperStock.find({ adminId, paperId })
+          .sort({ date: 1, createdAt: 1 });
+        
+        const paper = await Paper.findById(paperId);
+        if (!paper) {
+          return NextResponse.json(
+            { error: `Paper not found for paper ID: ${paperId}` },
+            { status: 404 }
+          );
+        }
 
-          // Check if there's enough stock
-          if (currentRemaining < totalRequired) {
-            const paperInfo = `${paper.paperType === 'Other' && paper.paperTypeOther ? paper.paperTypeOther : paper.paperType} - ${paper.paperSize} - ${paper.paperWeight}`;
-            return NextResponse.json(
-              { error: `Insufficient stock for paper: ${paperInfo}. Available: ${currentRemaining}, Required: ${totalRequired} (Issued: ${issuedPaper} + Wastage: ${wastage})` },
-              { status: 400 }
-            );
-          }
+        // Calculate current remaining stock
+        let currentRemaining: number;
+        if (stockEntries.length === 0) {
+          currentRemaining = paper.originalStock || 0;
+        } else {
+          currentRemaining = stockEntries[stockEntries.length - 1].remaining;
+        }
+
+        // If this paper was already used in the job, add back the old issued quantity and wastage
+        // because we'll restore it before deducting the new amount
+        const oldPaperData = oldPaperMap.get(paperId);
+        if (oldPaperData) {
+          // This paper was in the old job - we'll restore it first, so add it back
+          currentRemaining = currentRemaining + oldPaperData.issued + oldPaperData.wastage;
+        }
+
+        // Check if there's enough stock (after restoration, before new deduction)
+        if (currentRemaining < totalRequired) {
+          const paperInfo = `${paper.paperType === 'Other' && paper.paperTypeOther ? paper.paperTypeOther : paper.paperType} - ${paper.paperSize} - ${paper.paperWeight}`;
+          return NextResponse.json(
+            { error: `Insufficient stock for paper: ${paperInfo}. Available: ${currentRemaining}, Required: ${totalRequired} (Issued: ${issuedPaper} + Wastage: ${wastage})` },
+            { status: 400 }
+          );
         }
       }
     }
@@ -271,100 +284,235 @@ export async function PUT(
      .populate('machineId', 'equipmentName')
      .populate('relatedToJobId', 'jobNo jobName');
 
-    // Deduct stock if paperBy is 'customer' or 'company' and paperDetails are provided
-    if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
-      const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
+    // Validate job was updated successfully
+    if (!job || !job._id) {
+      return NextResponse.json(
+        { error: 'Failed to update job' },
+        { status: 500 }
+      );
+    }
+
+    // Handle stock updates when paperBy is 'customer' or 'company'
+    const jobDate = validatedData.jobDate || getCurrentBSDate();
+    const existingPaperDetails = (existingJob.paperDetails as any[]) || [];
+    const newPaperDetails = (validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') 
+      ? (validatedData.paperDetails || []) 
+      : [];
+
+    // Helper function to recalculate all stock entries for a paper after a change
+    const recalculateStockForPaper = async (paperId: string) => {
+      const Paper = (await import('@/models/Paper')).default;
+      const paper = await Paper.findById(paperId);
+      if (!paper) return;
+
+      // Get all entries sorted by date
+      const allEntries = await PaperStock.find({ adminId, paperId })
+        .sort({ date: 1, createdAt: 1 });
       
-      // Check if paper details changed
-      const paperDetailsChanged = JSON.stringify(existingPaperDetails) !== JSON.stringify(validatedData.paperDetails);
+      if (allEntries.length === 0) return;
+
+      // Recalculate all entries sequentially, using fresh data from each update
+      let previousRemaining = paper.originalStock || 0;
       
-      // Only update stock entries if paper details changed
-      if (paperDetailsChanged) {
-        const jobDate = validatedData.jobDate || getCurrentBSDate();
-        
-        for (const paperDetail of validatedData.paperDetails) {
-          const paperId = paperDetail.paperId;
-          
-          // Find existing stock entry for this job and paper
-          const existingStockEntry = await PaperStock.findOne({ 
-            adminId, 
-            paperId,
-            jobId: job._id 
-          });
-          
-          const issuedPaper = paperDetail.issuedQuantity || 0;
-          const wastage = paperDetail.wastage || 0;
-          
-          if (existingStockEntry) {
-            // Update existing stock entry
-            // First, we need to recalculate from the previous entry
-            const allEntries = await PaperStock.find({ adminId, paperId })
-              .sort({ date: 1, createdAt: 1 });
-            
-            const entryIndex = allEntries.findIndex(e => e._id.toString() === existingStockEntry._id.toString());
-            
-            let previousRemaining: number;
-            if (entryIndex === 0) {
-              const paper = await Paper.findById(paperId);
-              previousRemaining = paper?.originalStock || 0;
-            } else {
-              previousRemaining = allEntries[entryIndex - 1].remaining;
-            }
-            
-            const newRemaining = previousRemaining - issuedPaper - wastage;
-            
-            // Update the stock entry
-            await PaperStock.findByIdAndUpdate(existingStockEntry._id, {
-              date: jobDate,
-              jobName: validatedData.jobName,
-              issuedPaper,
-              wastage,
-              remaining: Math.max(0, newRemaining),
-              remarks: `Auto-deducted for job ${existingJob.jobNo}`,
-            });
-            
-            // Recalculate all subsequent entries
-            let currentRemaining = newRemaining;
-            for (let i = entryIndex + 1; i < allEntries.length; i++) {
-              const entry = allEntries[i];
-              const entryAddedStock = entry.addedStock || 0;
-              if (entryAddedStock > 0) {
-                currentRemaining = currentRemaining + entryAddedStock;
-              } else {
-                currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
-              }
-              await PaperStock.findByIdAndUpdate(entry._id, {
-                remaining: Math.max(0, currentRemaining),
-              });
-            }
-          } else {
-            // No existing entry, create new one
-            const stockEntries = await PaperStock.find({ adminId, paperId })
-              .sort({ date: -1, createdAt: -1 })
-              .limit(1);
-            
-            const paper = await Paper.findById(paperId);
-            const currentRemaining = stockEntries.length > 0 
-              ? stockEntries[0].remaining 
-              : (paper?.originalStock || 0);
-            
-            const remaining = currentRemaining - issuedPaper - wastage;
-            
-            // Create stock entry
-            await PaperStock.create({
-              adminId,
-              paperId,
-              date: jobDate,
-              jobNo: existingJob.jobNo,
-              jobName: validatedData.jobName,
-              jobId: job._id,
-              issuedPaper,
-              wastage,
-              remaining: Math.max(0, remaining),
-              remarks: `Auto-deducted for job ${existingJob.jobNo}`,
-              createdBy: user.email || user.id,
-            });
+      for (let i = 0; i < allEntries.length; i++) {
+        const entry = allEntries[i];
+        let currentRemaining: number;
+
+        const addedStock = entry.addedStock || 0;
+        if (addedStock > 0) {
+          // Adding stock
+          currentRemaining = previousRemaining + addedStock;
+        } else {
+          // Deducting stock
+          currentRemaining = previousRemaining - entry.issuedPaper - entry.wastage;
+        }
+
+        const updatedEntry = await PaperStock.findByIdAndUpdate(
+          entry._id,
+          {
+            remaining: Math.max(0, currentRemaining),
+          },
+          { new: true } // Return the updated document to get fresh data
+        );
+
+        // Use the updated remaining value for next iteration
+        previousRemaining = updatedEntry?.remaining || currentRemaining;
+      }
+    };
+
+    // Helper function to restore stock for a removed paper
+    const restoreStockForPaper = async (paperId: string, originalIssued: number, originalWastage: number) => {
+      // Validate job._id exists
+      if (!job || !job._id) {
+        throw new Error('Job ID is required for stock restoration');
+      }
+
+      // Find the stock entry for this job and paper
+      const existingStockEntry = await PaperStock.findOne({ 
+        adminId, 
+        paperId,
+        jobId: job._id.toString()
+      });
+
+      if (existingStockEntry) {
+        // Delete the stock entry that was created for this job
+        await PaperStock.findByIdAndDelete(existingStockEntry._id);
+        // Recalculate all subsequent entries for this paper
+        await recalculateStockForPaper(paperId);
+      }
+    };
+
+    // Helper function to create or update stock entry
+    const updateStockEntry = async (paperId: string, issuedPaper: number, wastage: number) => {
+      // Validate job._id exists
+      if (!job || !job._id) {
+        throw new Error('Job ID is required for stock update');
+      }
+
+      // Find existing stock entry for this job and paper
+      const existingStockEntry = await PaperStock.findOne({ 
+        adminId, 
+        paperId,
+        jobId: job._id.toString()
+      });
+
+      if (existingStockEntry) {
+        // Update existing entry - first restore it, then apply new values
+        await restoreStockForPaper(paperId, existingStockEntry.issuedPaper, existingStockEntry.wastage);
+        // Now create new entry with updated values
+        await createStockEntry(paperId, issuedPaper, wastage);
+      } else {
+        // Create new entry
+        await createStockEntry(paperId, issuedPaper, wastage);
+      }
+    };
+
+    // Helper function to create a new stock entry
+    const createStockEntry = async (paperId: string, issuedPaper: number, wastage: number) => {
+      const Paper = (await import('@/models/Paper')).default;
+      const paper = await Paper.findById(paperId);
+      if (!paper) {
+        throw new Error(`Paper not found for paper ID: ${paperId}`);
+      }
+
+      // Get all stock entries sorted by date to find the correct position
+      const stockEntries = await PaperStock.find({ adminId, paperId })
+        .sort({ date: 1, createdAt: 1 });
+      
+      // Find the correct position for this entry based on jobDate
+      // Entries should be in chronological order
+      let previousRemaining: number;
+      let insertPosition = stockEntries.length; // Default to end
+
+      if (stockEntries.length === 0) {
+        previousRemaining = paper.originalStock || 0;
+      } else {
+        // Find where this entry should be inserted based on date
+        // BS dates are in YYYY-MM-DD format, so string comparison works
+        for (let i = 0; i < stockEntries.length; i++) {
+          if (stockEntries[i].date > jobDate) {
+            insertPosition = i;
+            break;
           }
+        }
+
+        if (insertPosition === 0) {
+          // Inserting at the beginning
+          previousRemaining = paper.originalStock || 0;
+        } else {
+          // Inserting after some entries - use the previous entry's remaining
+          previousRemaining = stockEntries[insertPosition - 1].remaining;
+        }
+      }
+
+      const remaining = previousRemaining - issuedPaper - wastage;
+
+      // Validate job._id exists before creating stock entry
+      if (!job || !job._id) {
+        throw new Error('Job ID is required for stock entry creation');
+      }
+
+      // Create stock entry
+      await PaperStock.create({
+        adminId,
+        paperId,
+        date: jobDate,
+        jobNo: existingJob.jobNo,
+        jobName: validatedData.jobName,
+        jobId: job._id,
+        issuedPaper,
+        wastage,
+        remaining: Math.max(0, remaining),
+        remarks: `Auto-deducted for job ${existingJob.jobNo}`,
+        createdBy: user.email || user.id,
+      });
+
+      // Always recalculate all entries to ensure correctness
+      // This handles cases where the entry is inserted in the middle
+      await recalculateStockForPaper(paperId);
+    };
+
+    // Step 1: Determine which papers need to be restored
+    const oldPaperBy = existingJob.paperBy || (existingPaperDetails.length > 0 ? 'customer' : '');
+    const newPaperBy = validatedData.paperBy || '';
+    
+    // Check if paperBy changed from customer/company to something else
+    const paperByChangedAway = (oldPaperBy === 'customer' || oldPaperBy === 'company') && 
+                                newPaperBy !== 'customer' && newPaperBy !== 'company';
+    
+    if (paperByChangedAway && existingPaperDetails.length > 0) {
+      // paperBy changed away from customer/company - restore all old papers
+      for (const oldPaperDetail of existingPaperDetails) {
+        await restoreStockForPaper(
+          oldPaperDetail.paperId,
+          oldPaperDetail.issuedQuantity || 0,
+          oldPaperDetail.wastage || 0
+        );
+      }
+    } else if (newPaperBy === 'customer' || newPaperBy === 'company') {
+      // paperBy is still customer/company - restore only removed papers
+      for (const oldPaperDetail of existingPaperDetails) {
+        const stillExists = newPaperDetails.some(
+          (newDetail) => newDetail.paperId === oldPaperDetail.paperId
+        );
+
+        if (!stillExists) {
+          // This paper was removed - restore its stock
+          await restoreStockForPaper(
+            oldPaperDetail.paperId,
+            oldPaperDetail.issuedQuantity || 0,
+            oldPaperDetail.wastage || 0
+          );
+        }
+      }
+    }
+
+    // Step 3: Create/update stock entries for new papers
+    // (papers in newPaperDetails)
+    if (newPaperDetails.length > 0) {
+      for (const paperDetail of newPaperDetails) {
+        const paperId = paperDetail.paperId;
+        const issuedPaper = paperDetail.issuedQuantity || 0;
+        const wastage = paperDetail.wastage || 0;
+
+        // Find if this paper existed in the old job
+        const oldPaperDetail = existingPaperDetails.find(
+          (old) => old.paperId === paperId
+        );
+
+        if (oldPaperDetail) {
+          // Paper still exists but quantities might have changed
+          const oldIssued = oldPaperDetail.issuedQuantity || 0;
+          const oldWastage = oldPaperDetail.wastage || 0;
+
+          if (oldIssued !== issuedPaper || oldWastage !== wastage) {
+            // Quantities changed - update stock entry
+            await updateStockEntry(paperId, issuedPaper, wastage);
+          }
+          // If quantities are the same, no need to update
+        } else {
+          // New paper - create stock entry
+          await createStockEntry(paperId, issuedPaper, wastage);
         }
       }
     }
@@ -383,9 +531,15 @@ export async function PUT(
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error('Update job error:', error);
+    // Log full error details for debugging
+    console.error('Update job error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
@@ -401,14 +555,80 @@ export async function DELETE(
     const adminId = getAdminId(user);
     const { id } = await params;
 
-    const job = await Job.findOneAndDelete({ _id: id, adminId });
-
+    // Get the job before deleting to check for stock entries
+    const job = await Job.findOne({ _id: id, adminId });
+    
     if (!job) {
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
       );
     }
+
+    // Restore stock for all papers used in this job
+    const existingPaperDetails = (job.paperDetails as any[]) || [];
+    if ((job.paperBy === 'customer' || job.paperBy === 'company') && existingPaperDetails.length > 0) {
+      // Helper function to recalculate all stock entries for a paper after a change
+      const recalculateStockForPaper = async (paperId: string) => {
+        const Paper = (await import('@/models/Paper')).default;
+        const paper = await Paper.findById(paperId);
+        if (!paper) return;
+
+        // Get all entries sorted by date
+        const allEntries = await PaperStock.find({ adminId, paperId })
+          .sort({ date: 1, createdAt: 1 });
+        
+        if (allEntries.length === 0) return;
+
+        // Recalculate all entries sequentially, using fresh data from each update
+        let previousRemaining = paper.originalStock || 0;
+        
+        for (let i = 0; i < allEntries.length; i++) {
+          const entry = allEntries[i];
+          let currentRemaining: number;
+
+          const addedStock = entry.addedStock || 0;
+          if (addedStock > 0) {
+            // Adding stock
+            currentRemaining = previousRemaining + addedStock;
+          } else {
+            // Deducting stock
+            currentRemaining = previousRemaining - entry.issuedPaper - entry.wastage;
+          }
+
+          const updatedEntry = await PaperStock.findByIdAndUpdate(
+            entry._id,
+            {
+              remaining: Math.max(0, currentRemaining),
+            },
+            { new: true } // Return the updated document to get fresh data
+          );
+
+          // Use the updated remaining value for next iteration
+          previousRemaining = updatedEntry?.remaining || currentRemaining;
+        }
+      };
+
+      // Restore stock for each paper used in the job
+      for (const paperDetail of existingPaperDetails) {
+        const paperId = paperDetail.paperId;
+        
+        // Delete all stock entries associated with this job
+        const deletedCount = await PaperStock.deleteMany({ 
+          adminId, 
+          paperId,
+          jobId: id.toString()
+        });
+
+        // If any entries were deleted, recalculate subsequent entries
+        if (deletedCount.deletedCount > 0) {
+          await recalculateStockForPaper(paperId);
+        }
+      }
+    }
+
+    // Now delete the job
+    await Job.findByIdAndDelete(id);
 
     return NextResponse.json(
       { message: 'Job deleted successfully' },
@@ -418,9 +638,15 @@ export async function DELETE(
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error('Delete job error:', error);
+    // Log full error details for debugging
+    console.error('Delete job error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

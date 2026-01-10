@@ -62,6 +62,13 @@ export default function EditEstimatePage() {
   const [hasDiscount, setHasDiscount] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
+  const [originalParticulars, setOriginalParticulars] = useState<Particular[]>([]);
+  const [originalDeliveryNotes, setOriginalDeliveryNotes] = useState<DeliveryNote[]>([]);
+  const [originalVatType, setOriginalVatType] = useState<'excluded' | 'included' | 'none'>('none');
+  const [originalHasDiscount, setOriginalHasDiscount] = useState(false);
+  const [originalDiscountPercentage, setOriginalDiscountPercentage] = useState(0);
+  const [estimateNumber, setEstimateNumber] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -136,6 +143,7 @@ export default function EditEstimatePage() {
       }
 
       const estimate = data.estimate;
+      setEstimateNumber(estimate.estimateNumber || '');
       const clientId = typeof estimate.clientId === 'object' ? estimate.clientId._id.toString() : estimate.clientId.toString();
       
       // Handle jobId as array or single value (for backward compatibility)
@@ -143,12 +151,14 @@ export default function EditEstimatePage() {
         ? estimate.jobId.map((j: any) => typeof j === 'object' ? j._id.toString() : j.toString())
         : [typeof estimate.jobId === 'object' ? estimate.jobId._id.toString() : estimate.jobId.toString()];
 
-      setFormData({
+      const initialFormData = {
         clientId,
         jobIds,
         estimateDate: estimate.estimateDate || '',
         remarks: estimate.remarks || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
 
       // Set job details from estimate (will be updated by useEffect if job found in jobs list)
       setJobDetails({
@@ -168,9 +178,11 @@ export default function EditEstimatePage() {
         amount: p.amount || 0,
       }));
 
-      setParticulars(convertedParticulars.length > 0 ? convertedParticulars : [
+      const finalParticulars = convertedParticulars.length > 0 ? convertedParticulars : [
         { sn: 1, particulars: '', quantity: 0, rate: 0, amount: 0 },
-      ]);
+      ];
+      setParticulars(finalParticulars);
+      setOriginalParticulars(JSON.parse(JSON.stringify(finalParticulars)));
       
       // Convert deliveryNotes to match DeliveryNote interface
       const convertedDeliveryNotes: DeliveryNote[] = estimate.deliveryNotes?.map((dn: any) => ({
@@ -180,10 +192,17 @@ export default function EditEstimatePage() {
         remarks: dn.remarks || '',
       })) || [];
       setDeliveryNotes(convertedDeliveryNotes);
+      setOriginalDeliveryNotes(JSON.parse(JSON.stringify(convertedDeliveryNotes)));
       
-      setVatType(estimate.vatType || 'none');
-      setHasDiscount(estimate.hasDiscount || false);
-      setDiscountPercentage(estimate.discountPercentage || 0);
+      const finalVatType = estimate.vatType || 'none';
+      const finalHasDiscount = estimate.hasDiscount || false;
+      const finalDiscountPercentage = estimate.discountPercentage || 0;
+      setVatType(finalVatType);
+      setHasDiscount(finalHasDiscount);
+      setDiscountPercentage(finalDiscountPercentage);
+      setOriginalVatType(finalVatType);
+      setOriginalHasDiscount(finalHasDiscount);
+      setOriginalDiscountPercentage(finalDiscountPercentage);
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch estimate');
       router.push('/dashboard/estimates');
@@ -350,6 +369,15 @@ export default function EditEstimatePage() {
     );
   }
 
+  // Check if form has changes
+  const formDataChanged = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+  const particularsChanged = JSON.stringify(particulars) !== JSON.stringify(originalParticulars);
+  const deliveryNotesChanged = JSON.stringify(deliveryNotes) !== JSON.stringify(originalDeliveryNotes);
+  const vatTypeChanged = vatType !== originalVatType;
+  const hasDiscountChanged = hasDiscount !== originalHasDiscount;
+  const discountPercentageChanged = discountPercentage !== originalDiscountPercentage;
+  const hasChanges = formDataChanged || particularsChanged || deliveryNotesChanged || vatTypeChanged || hasDiscountChanged || discountPercentageChanged;
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl">
@@ -357,6 +385,18 @@ export default function EditEstimatePage() {
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Estimate Number
+              </label>
+              <input
+                type="text"
+                value={estimateNumber}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
             <div>
               <SearchableMultiSelect
                 options={clients.map((client) => ({
@@ -506,8 +546,8 @@ export default function EditEstimatePage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Estimate'}
             </button>

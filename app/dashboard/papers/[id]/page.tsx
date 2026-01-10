@@ -21,6 +21,7 @@ export default function EditPaperPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [originalData, setOriginalData] = useState<any>(null);
   const [formData, setFormData] = useState({
     clientId: '',
     paperType: PaperType.MAP_LITHO,
@@ -64,7 +65,7 @@ export default function EditPaperPage() {
       const matchedClient = fetchedClients.find((c: Client) => c.clientName === clientName);
       const clientId = matchedClient?._id || '';
 
-      setFormData({
+      const initialFormData = {
         clientId,
         paperType: paperData.paper.paperType || PaperType.MAP_LITHO,
         paperTypeOther: paperData.paper.paperTypeOther || '',
@@ -72,7 +73,9 @@ export default function EditPaperPage() {
         paperWeight: paperData.paper.paperWeight || '',
         units: paperData.paper.units || PaperUnit.REAM,
         originalStock: paperData.paper.originalStock || 0,
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch data');
       router.push('/dashboard/papers');
@@ -146,6 +149,9 @@ export default function EditPaperPage() {
       </DashboardLayout>
     );
   }
+
+  // Check if form has changes
+  const hasChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
   return (
     <DashboardLayout>
@@ -274,8 +280,8 @@ export default function EditPaperPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Paper'}
             </button>

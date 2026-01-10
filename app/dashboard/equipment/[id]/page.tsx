@@ -15,6 +15,7 @@ export default function EditEquipmentPage() {
   const equipmentId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
   const [formData, setFormData] = useState({
     equipmentName: '',
     size: '',
@@ -43,12 +44,14 @@ export default function EditEquipmentPage() {
         throw new Error(data.error || 'Failed to fetch equipment');
       }
 
-      setFormData({
+      const initialFormData = {
         equipmentName: data.equipment.equipmentName || '',
         size: data.equipment.size || '',
         status: data.equipment.status || EquipmentStatus.OPERATIONAL,
         lastMaintainedDate: data.equipment.lastMaintainedDate || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch equipment');
       router.push('/dashboard/equipment');
@@ -102,6 +105,9 @@ export default function EditEquipmentPage() {
       </DashboardLayout>
     );
   }
+
+  // Check if form has changes
+  const hasChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
   return (
     <DashboardLayout>
@@ -172,8 +178,8 @@ export default function EditEquipmentPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Equipment'}
             </button>
