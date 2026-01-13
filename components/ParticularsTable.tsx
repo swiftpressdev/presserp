@@ -160,7 +160,7 @@ export default function ParticularsTable({
                     onChange={(e) => updateRow(index, 'quantity', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded"
                     min="0"
-                    step="1"
+                    step="0.00001"
                     placeholder="0"
                   />
                 </td>
@@ -171,7 +171,7 @@ export default function ParticularsTable({
                     onChange={(e) => updateRow(index, 'rate', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded"
                     min="0"
-                    step="0.01"
+                    step="0.00001"
                     placeholder="0.00"
                   />
                 </td>
@@ -247,7 +247,7 @@ export default function ParticularsTable({
                   className="w-24 px-3 py-1 border border-gray-300 rounded-md"
                   min="0"
                   max="100"
-                  step="0.01"
+                  step="0.00001"
                   placeholder="0"
                 />
               </div>

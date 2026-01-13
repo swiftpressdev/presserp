@@ -17,6 +17,7 @@ interface Challan {
   challanNumber: string;
   challanDate: string;
   totalUnits: number;
+  clientId?: string | { _id: string; clientName: string };
 }
 
 interface DeliveryNotesTableProps {
@@ -143,11 +144,18 @@ export default function DeliveryNotesTable({
     <div className="space-y-4">
       <div>
         <SearchableMultiSelect
-          options={challans.map((challan) => ({
-            value: challan._id,
-            label: challan.challanNumber,
-            sublabel: `Date: ${challan.challanDate}, Units: ${challan.totalUnits}`,
-          }))}
+          options={challans.map((challan) => {
+            const clientName = challan.clientId 
+              ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : '')
+              : '';
+            return {
+              value: challan._id,
+              label: challan.challanNumber,
+              sublabel: clientName 
+                ? `Client: ${clientName} | Date: ${challan.challanDate} | Units: ${challan.totalUnits}`
+                : `Date: ${challan.challanDate}, Units: ${challan.totalUnits}`,
+            };
+          })}
           selectedValues={selectedChallanIds}
           onChange={handleChallanSelection}
           label="Select Challans"
@@ -197,7 +205,7 @@ export default function DeliveryNotesTable({
                     onChange={(e) => updateRow(index, 'quantity', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     min="0"
-                    step="0.01"
+                    step="0.00001"
                     placeholder="0"
                   />
                 </td>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import NepaliDatePicker from './NepaliDatePicker';
 
 export interface SearchField {
   key: string;
@@ -83,41 +84,40 @@ export default function AdvancedSearchBar({ fields, onSearch, onReset }: Advance
 
       case 'date':
         return (
-          <input
-            type="date"
+          <NepaliDatePicker
             value={searchParams[field.key] || ''}
-            onChange={(e) => handleFieldChange(field.key, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(value) => handleFieldChange(field.key, value)}
+            placeholder="YYYY-MM-DD"
           />
         );
 
       case 'dateRange':
         return (
           <div className="flex gap-2">
-            <input
-              type="date"
-              placeholder="From"
-              value={searchParams[field.key]?.from || ''}
-              onChange={(e) =>
-                handleFieldChange(field.key, {
-                  ...(searchParams[field.key] || {}),
-                  from: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="date"
-              placeholder="To"
-              value={searchParams[field.key]?.to || ''}
-              onChange={(e) =>
-                handleFieldChange(field.key, {
-                  ...(searchParams[field.key] || {}),
-                  to: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="flex-1">
+              <NepaliDatePicker
+                value={searchParams[field.key]?.from || ''}
+                onChange={(value) =>
+                  handleFieldChange(field.key, {
+                    ...(searchParams[field.key] || {}),
+                    from: value,
+                  })
+                }
+                placeholder="From (BS)"
+              />
+            </div>
+            <div className="flex-1">
+              <NepaliDatePicker
+                value={searchParams[field.key]?.to || ''}
+                onChange={(value) =>
+                  handleFieldChange(field.key, {
+                    ...(searchParams[field.key] || {}),
+                    to: value,
+                  })
+                }
+                placeholder="To (BS)"
+              />
+            </div>
           </div>
         );
 
@@ -125,6 +125,7 @@ export default function AdvancedSearchBar({ fields, onSearch, onReset }: Advance
         return (
           <input
             type="number"
+            step="0.00001"
             placeholder={field.placeholder || `Search ${field.label.toLowerCase()}...`}
             value={searchParams[field.key] || ''}
             onChange={(e) => handleFieldChange(field.key, e.target.value ? Number(e.target.value) : '')}
@@ -137,6 +138,7 @@ export default function AdvancedSearchBar({ fields, onSearch, onReset }: Advance
           <div className="flex gap-2">
             <input
               type="number"
+              step="0.00001"
               placeholder="Min"
               value={searchParams[field.key]?.min || ''}
               onChange={(e) =>
@@ -149,6 +151,7 @@ export default function AdvancedSearchBar({ fields, onSearch, onReset }: Advance
             />
             <input
               type="number"
+              step="0.00001"
               placeholder="Max"
               value={searchParams[field.key]?.max || ''}
               onChange={(e) =>

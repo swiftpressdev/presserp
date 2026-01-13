@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import NepaliDatePicker from '@/components/NepaliDatePicker';
 import { EquipmentStatus } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -14,6 +15,7 @@ export default function EditEquipmentPage() {
   const equipmentId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
   const [formData, setFormData] = useState({
     equipmentName: '',
     size: '',
@@ -42,12 +44,14 @@ export default function EditEquipmentPage() {
         throw new Error(data.error || 'Failed to fetch equipment');
       }
 
-      setFormData({
+      const initialFormData = {
         equipmentName: data.equipment.equipmentName || '',
         size: data.equipment.size || '',
         status: data.equipment.status || EquipmentStatus.OPERATIONAL,
         lastMaintainedDate: data.equipment.lastMaintainedDate || '',
-      });
+      };
+      setFormData(initialFormData);
+      setOriginalData(JSON.parse(JSON.stringify(initialFormData)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch equipment');
       router.push('/dashboard/equipment');
@@ -101,6 +105,9 @@ export default function EditEquipmentPage() {
       </DashboardLayout>
     );
   }
+
+  // Check if form has changes
+  const hasChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
   return (
     <DashboardLayout>
@@ -157,15 +164,13 @@ export default function EditEquipmentPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Last Maintained Date (BS) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
+              <NepaliDatePicker
                 value={formData.lastMaintainedDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, lastMaintainedDate: e.target.value })
+                onChange={(value) =>
+                  setFormData({ ...formData, lastMaintainedDate: value })
                 }
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="YYYY-MM-DD"
+                required
               />
             </div>
           </div>
@@ -173,8 +178,8 @@ export default function EditEquipmentPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Updating...' : 'Update Equipment'}
             </button>

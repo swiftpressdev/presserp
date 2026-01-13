@@ -79,7 +79,7 @@ export default function ChallanParticularsTable({
                     onChange={(e) => updateRow(index, 'quantity', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded"
                     min="0"
-                    step="1"
+                    step="0.00001"
                     placeholder="0"
                   />
                 </td>

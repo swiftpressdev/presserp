@@ -99,7 +99,9 @@ export async function PUT(
         remaining = (paper.originalStock || 0) - issuedPaper - wastage;
       }
     } else {
-      const previousRemaining = allEntries[entryIndex - 1].remaining;
+      // Re-read the previous entry to ensure we have the latest data (handles concurrent updates)
+      const prevEntry = await PaperStock.findById(allEntries[entryIndex - 1]._id);
+      const previousRemaining = prevEntry?.remaining || allEntries[entryIndex - 1].remaining;
       if (addedStock > 0) {
         remaining = previousRemaining + addedStock;
       } else {
@@ -133,7 +135,7 @@ export async function PUT(
       { new: true }
     ).populate('jobId', 'jobNo jobName');
 
-    // Recalculate all subsequent entries
+    // Recalculate all subsequent entries using fresh data
     const subsequentEntries = allEntries.slice(entryIndex + 1);
     let currentRemaining = remaining;
     
@@ -144,9 +146,15 @@ export async function PUT(
       } else {
         currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
       }
-      await PaperStock.findByIdAndUpdate(entry._id, {
-        remaining: Math.max(0, currentRemaining),
-      });
+      const updatedEntry = await PaperStock.findByIdAndUpdate(
+        entry._id,
+        {
+          remaining: Math.max(0, currentRemaining),
+        },
+        { new: true } // Return updated document to ensure we have fresh data
+      );
+      // Use the updated remaining value for next iteration
+      currentRemaining = updatedEntry?.remaining || currentRemaining;
     }
 
     return NextResponse.json(
@@ -160,8 +168,14 @@ export async function PUT(
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Update paper stock error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Log full error details for debugging
+    console.error('Update paper stock error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -190,7 +204,7 @@ export async function DELETE(
     // Delete the entry
     await PaperStock.findByIdAndDelete(id);
 
-    // Recalculate all subsequent entries
+    // Recalculate all subsequent entries using fresh data
     const subsequentEntries = allEntries.slice(entryIndex + 1);
     if (subsequentEntries.length > 0) {
       // Get the remaining from the entry before the deleted one
@@ -200,7 +214,9 @@ export async function DELETE(
         const paper = await Paper.findById(stockEntry.paperId);
         currentRemaining = paper?.originalStock || 0;
       } else {
-        currentRemaining = allEntries[entryIndex - 1].remaining;
+        // Re-read the previous entry to get fresh data (it might have been updated)
+        const prevEntry = await PaperStock.findById(allEntries[entryIndex - 1]._id);
+        currentRemaining = prevEntry?.remaining || allEntries[entryIndex - 1].remaining;
       }
       
       for (const entry of subsequentEntries) {
@@ -210,9 +226,15 @@ export async function DELETE(
         } else {
           currentRemaining = currentRemaining - entry.issuedPaper - entry.wastage;
         }
-        await PaperStock.findByIdAndUpdate(entry._id, {
-          remaining: Math.max(0, currentRemaining),
-        });
+        const updatedEntry = await PaperStock.findByIdAndUpdate(
+          entry._id,
+          {
+            remaining: Math.max(0, currentRemaining),
+          },
+          { new: true } // Return updated document to ensure we have fresh data
+        );
+        // Use the updated remaining value for next iteration
+        currentRemaining = updatedEntry?.remaining || currentRemaining;
       }
     }
 
@@ -224,7 +246,13 @@ export async function DELETE(
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Delete paper stock error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Log full error details for debugging
+    console.error('Delete paper stock error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
