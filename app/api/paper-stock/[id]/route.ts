@@ -15,6 +15,7 @@ const updatePaperStockSchema = z.object({
   addedStock: z.number().min(0, 'Added stock must be 0 or greater').optional(),
   remaining: z.number().optional(),
   remarks: z.string().optional(),
+  updatedAt: z.string().optional(), // ISO date string
 });
 
 export async function GET(
@@ -118,6 +119,11 @@ export async function PUT(
     // Handle addedStock - set to undefined if 0 to keep it clean
     if (validatedData.addedStock !== undefined) {
       updateData.addedStock = addedStock > 0 ? addedStock : undefined;
+    }
+    
+    // Handle updatedAt - convert ISO string to Date if provided
+    if (validatedData.updatedAt) {
+      updateData.updatedAt = new Date(validatedData.updatedAt);
     }
     
     if (validatedData.jobId && !validatedData.jobNo) {

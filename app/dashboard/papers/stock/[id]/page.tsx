@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import NepaliDatePicker from '@/components/NepaliDatePicker';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { formatBSDate, getCurrentBSDate } from '@/lib/dateUtils';
+import { formatBSDate, getCurrentBSDate, convertDateToBS, convertBSToDate } from '@/lib/dateUtils';
 import { generatePaperStockPDF } from '@/lib/pdfUtils';
 import { generatePaperStockExcel } from '@/lib/excelUtils';
 
@@ -21,6 +21,7 @@ interface PaperStock {
   addedStock?: number;
   remaining: number;
   remarks?: string;
+  updatedAt?: string | Date;
 }
 
 interface Paper {
@@ -45,6 +46,7 @@ export default function PaperStockPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     date: getCurrentBSDate(),
+    updatedAtDate: '',
     jobNo: '',
     jobName: '',
     issuedPaper: 0,
@@ -53,6 +55,7 @@ export default function PaperStockPage() {
   });
   const [addStockFormData, setAddStockFormData] = useState({
     date: getCurrentBSDate(),
+    updatedAtDate: '',
     addedStock: 0,
     remarks: '',
   });
@@ -131,16 +134,24 @@ export default function PaperStockPage() {
       
       const method = editingId ? 'PUT' : 'POST';
 
+      const requestBody: any = {
+        paperId,
+        ...formData,
+        remaining,
+      };
+      
+      // Convert updatedAtDate (BS) to updatedAt (Date) if provided
+      if (editingId && formData.updatedAtDate) {
+        requestBody.updatedAt = convertBSToDate(formData.updatedAtDate).toISOString();
+        delete requestBody.updatedAtDate;
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          paperId,
-          ...formData,
-          remaining,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -154,6 +165,7 @@ export default function PaperStockPage() {
       setEditingId(null);
       setFormData({
         date: getCurrentBSDate(),
+        updatedAtDate: '',
         jobNo: '',
         jobName: '',
         issuedPaper: 0,
@@ -184,20 +196,27 @@ export default function PaperStockPage() {
       
       const method = editingId ? 'PUT' : 'POST';
 
+      const requestBody: any = {
+        paperId,
+        date: addStockFormData.date,
+        issuedPaper: 0,
+        wastage: 0,
+        addedStock: addStockFormData.addedStock,
+        remaining,
+        remarks: addStockFormData.remarks || undefined,
+      };
+      
+      // Convert updatedAtDate (BS) to updatedAt (Date) if provided
+      if (editingId && addStockFormData.updatedAtDate) {
+        requestBody.updatedAt = convertBSToDate(addStockFormData.updatedAtDate).toISOString();
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          paperId,
-          date: addStockFormData.date,
-          issuedPaper: 0,
-          wastage: 0,
-          addedStock: addStockFormData.addedStock,
-          remaining,
-          remarks: addStockFormData.remarks || undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -211,6 +230,7 @@ export default function PaperStockPage() {
       setEditingId(null);
       setAddStockFormData({
         date: getCurrentBSDate(),
+        updatedAtDate: '',
         addedStock: 0,
         remarks: '',
       });
@@ -222,10 +242,13 @@ export default function PaperStockPage() {
 
   const handleEdit = (entry: PaperStock) => {
     setEditingId(entry._id);
+    const updatedAtBS = entry.updatedAt ? convertDateToBS(new Date(entry.updatedAt)) : getCurrentBSDate();
+    
     if (entry.addedStock && entry.addedStock > 0) {
       // Editing an add stock entry
       setAddStockFormData({
         date: entry.date,
+        updatedAtDate: updatedAtBS,
         addedStock: entry.addedStock,
         remarks: entry.remarks || '',
       });
@@ -234,6 +257,7 @@ export default function PaperStockPage() {
       // Editing a regular stock entry
       setFormData({
         date: entry.date,
+        updatedAtDate: updatedAtBS,
         jobNo: entry.jobNo || '',
         jobName: entry.jobName || '',
         issuedPaper: entry.issuedPaper,
@@ -242,6 +266,11 @@ export default function PaperStockPage() {
       });
       setShowAddForm(true);
     }
+  };
+
+  const getUpdatedAtDisplay = (entry: PaperStock | null): string => {
+    if (!entry || !entry.updatedAt) return '-';
+    return formatBSDate(convertDateToBS(new Date(entry.updatedAt)));
   };
 
   const handleDelete = async (id: string) => {
@@ -386,6 +415,7 @@ export default function PaperStockPage() {
                 setEditingId(null);
                 setAddStockFormData({
                   date: getCurrentBSDate(),
+                  updatedAtDate: '',
                   addedStock: 0,
                   remarks: '',
                 });
@@ -401,6 +431,7 @@ export default function PaperStockPage() {
                 setEditingId(null);
                 setFormData({
                   date: getCurrentBSDate(),
+                  updatedAtDate: '',
                   jobNo: '',
                   jobName: '',
                   issuedPaper: 0,
@@ -462,6 +493,19 @@ export default function PaperStockPage() {
                     required
                   />
                 </div>
+                {editingId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Date Updated
+                    </label>
+                    <input
+                      type="text"
+                      value={getUpdatedAtDisplay(stockEntries.find(e => e._id === editingId) || null)}
+                      disabled
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Added Stock <span className="text-red-500">*</span>
@@ -500,6 +544,7 @@ export default function PaperStockPage() {
                     setEditingId(null);
                     setAddStockFormData({
                       date: getCurrentBSDate(),
+                      updatedAtDate: '',
                       addedStock: 0,
                       remarks: '',
                     });
@@ -532,6 +577,18 @@ export default function PaperStockPage() {
                     required
                   />
                 </div>
+                {editingId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Date Updated (BS)
+                    </label>
+                    <NepaliDatePicker
+                      value={formData.updatedAtDate}
+                      onChange={(value) => setFormData({ ...formData, updatedAtDate: value })}
+                      placeholder="YYYY-MM-DD"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Job No</label>
                   <input
@@ -602,6 +659,7 @@ export default function PaperStockPage() {
                     setEditingId(null);
                     setFormData({
                       date: getCurrentBSDate(),
+                      updatedAtDate: '',
                       jobNo: '',
                       jobName: '',
                       issuedPaper: 0,
@@ -625,6 +683,9 @@ export default function PaperStockPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                   Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                  Date Updated
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                   Job No
@@ -655,7 +716,7 @@ export default function PaperStockPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {stockEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
                     No stock entries found
                   </td>
                 </tr>
@@ -664,6 +725,11 @@ export default function PaperStockPage() {
                   <tr key={entry._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-300">
                       {formatBSDate(entry.date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-300">
+                      {entry.updatedAt 
+                        ? formatBSDate(convertDateToBS(new Date(entry.updatedAt)))
+                        : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-300">
                       {entry.jobNo || '-'}

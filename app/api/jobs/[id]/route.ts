@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import Job from '@/models/Job';
 import Client from '@/models/Client';
 import Paper from '@/models/Paper';
@@ -150,6 +151,21 @@ export async function GET(
 ) {
   try {
     await dbConnect();
+    
+    // Ensure all models are registered before use
+    if (!mongoose.models.Client) {
+      await import('@/models/Client');
+    }
+    if (!mongoose.models.Paper) {
+      await import('@/models/Paper');
+    }
+    if (!mongoose.models.Equipment) {
+      await import('@/models/Equipment');
+    }
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;
@@ -187,6 +203,21 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
+    
+    // Ensure all models are registered before use
+    if (!mongoose.models.Client) {
+      await import('@/models/Client');
+    }
+    if (!mongoose.models.Paper) {
+      await import('@/models/Paper');
+    }
+    if (!mongoose.models.Equipment) {
+      await import('@/models/Equipment');
+    }
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;
@@ -551,6 +582,18 @@ export async function DELETE(
 ) {
   try {
     await dbConnect();
+    
+    // Ensure all models are registered before use
+    if (!mongoose.models.Paper) {
+      await import('@/models/Paper');
+    }
+    if (!mongoose.models.PaperStock) {
+      await import('@/models/PaperStock');
+    }
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;

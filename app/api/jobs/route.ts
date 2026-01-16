@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import Job from '@/models/Job';
 import Client from '@/models/Client';
 import Paper from '@/models/Paper';
@@ -148,6 +149,21 @@ const jobSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
+    
+    // Ensure all models are registered before use
+    if (!mongoose.models.Client) {
+      await import('@/models/Client');
+    }
+    if (!mongoose.models.Paper) {
+      await import('@/models/Paper');
+    }
+    if (!mongoose.models.Equipment) {
+      await import('@/models/Equipment');
+    }
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
@@ -172,6 +188,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
+    
+    // Ensure all models are registered before use
+    if (!mongoose.models.Client) {
+      await import('@/models/Client');
+    }
+    if (!mongoose.models.Paper) {
+      await import('@/models/Paper');
+    }
+    if (!mongoose.models.Equipment) {
+      await import('@/models/Equipment');
+    }
+    if (!mongoose.models.Job) {
+      await import('@/models/Job');
+    }
+    if (!mongoose.models.PaperStock) {
+      await import('@/models/PaperStock');
+    }
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 

@@ -39,3 +39,40 @@ export function isValidBSDate(bsDateString: string): boolean {
     return false;
   }
 }
+
+export function convertDateToBS(date: Date | string): string {
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const bsDate = new NepaliDate(dateObj);
+    const year = bsDate.getYear();
+    const month = String(bsDate.getMonth() + 1).padStart(2, '0');
+    const day = String(bsDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    return '';
+  }
+}
+
+export function formatBSDateTime(bsDate: string, includeTime: boolean = false): string {
+  try {
+    const [year, month, day] = bsDate.split('-');
+    if (includeTime) {
+      // If we need time, we'd need to pass it separately or modify the function
+      return `${year}/${month}/${day}`;
+    }
+    return `${year}/${month}/${day}`;
+  } catch (error) {
+    return bsDate;
+  }
+}
+
+export function convertBSToDate(bsDate: string): Date {
+  try {
+    const [year, month, day] = bsDate.split('-').map(Number);
+    const nepaliDate = new NepaliDate(year, month - 1, day);
+    return nepaliDate.toJsDate();
+  } catch (error) {
+    // Return current date if conversion fails
+    return new Date();
+  }
+}
