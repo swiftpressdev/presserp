@@ -25,7 +25,7 @@ import { z } from 'zod';
 
 const updateJobSchema = z.object({
   jobName: z.string().min(1, 'Job name is required'),
-  clientId: z.string().min(1, 'Client is required'),
+  clientId: z.string().optional(),
   jobDate: z.string().min(1, 'Job date is required'),
   deliveryDate: z.string().min(1, 'Delivery date is required'),
   jobTypes: z.array(z.nativeEnum(JobType)).min(1, 'At least one job type is required'),
@@ -48,22 +48,22 @@ const updateJobSchema = z.object({
     issuedQuantity: z.number().min(0),
     wastage: z.number().min(0),
   })).optional(),
-  totalBWPages: z.number().min(0),
-  totalColorPages: z.number().min(0),
+  totalBWPages: z.number().min(0).optional(),
+  totalColorPages: z.number().min(0).optional(),
   pageColor: z.nativeEnum(PageColorType).optional(),
   pageColorOther: z.string().optional(),
   bookSize: z.nativeEnum(BookSizeType).optional(),
   bookSizeOther: z.string().optional(),
   totalPlate: z.string().optional(),
   totalFarma: z.string().optional(),
-  plateBy: z.nativeEnum(PlateBy),
+  plateBy: z.nativeEnum(PlateBy).optional(),
   plateFrom: z.string().optional(),
   plateSize: z.nativeEnum(PlateSizeType).optional(),
   plateSizeOther: z.string().optional(),
-  machineId: z.string().min(1, 'Machine is required'),
+  machineId: z.string().optional(),
   laminationThermal: z.nativeEnum(LaminationType).optional(),
   normal: z.nativeEnum(NormalType).optional(),
-  folding: z.boolean(),
+  folding: z.boolean().optional(),
   binding: z.nativeEnum(BindingType).optional(),
   bindingOther: z.string().optional(),
   stitch: z.nativeEnum(StitchType).optional(),
@@ -94,16 +94,6 @@ const updateJobSchema = z.object({
     }
     return true;
   }
-  // If paperBy is not set, paperId and paperSize are required
-  if (!data.paperBy) {
-    if (!data.paperId || !data.paperId.trim().length) {
-      return false;
-    }
-    if (!data.paperSize || !data.paperSize.trim().length) {
-      return false;
-    }
-    return true;
-  }
   return true;
 }, (data) => {
   if ((data.paperBy === 'customer' || data.paperBy === 'company') && data.paperDetails && data.paperDetails.length > 0) {
@@ -129,18 +119,6 @@ const updateJobSchema = z.object({
         };
       }
     }
-  }
-  if (!data.paperBy && !data.paperId) {
-    return {
-      message: 'Paper ID is required',
-      path: ['paperId'],
-    };
-  }
-  if (!data.paperBy && (!data.paperSize || !data.paperSize.trim().length)) {
-    return {
-      message: 'Paper size is required',
-      path: ['paperSize'],
-    };
   }
   return {};
 });
@@ -226,6 +204,10 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateJobSchema.parse(body);
 
+    // Validate clientId only if provided
+    if (validatedData.clientId) {
+      await Client.findOne({ _id: validatedData.clientId, adminId });
+    }
     // Validate paperId only if it's provided (not when using paperIds)
     if (validatedData.paperId) {
       await Paper.findOne({ _id: validatedData.paperId, adminId });
@@ -236,8 +218,12 @@ export async function PUT(
         await Paper.findOne({ _id: paperId, adminId });
       }
     }
+    // Validate machineId only if provided
+    if (validatedData.machineId) {
+      await Equipment.findOne({ _id: validatedData.machineId, adminId });
+    }
 
-    const totalPages = validatedData.totalBWPages + validatedData.totalColorPages;
+    const totalPages = (validatedData.totalBWPages || 0) + (validatedData.totalColorPages || 0);
 
     // Get existing job to check if paperIds changed
     const existingJob = await Job.findOne({ _id: id, adminId });
@@ -303,12 +289,55 @@ export async function PUT(
       }
     }
 
+    // Build update object, filtering out undefined values but keeping empty arrays and proper values
+    const updateData: any = {
+      jobName: validatedData.jobName,
+      jobDate: validatedData.jobDate,
+      deliveryDate: validatedData.deliveryDate,
+      jobTypes: validatedData.jobTypes,
+      quantity: validatedData.quantity,
+      totalPages,
+    };
+
+    // Add optional fields only if they are defined (including empty arrays and false booleans)
+    if (validatedData.clientId !== undefined) updateData.clientId = validatedData.clientId;
+    if (validatedData.paperBy !== undefined) updateData.paperBy = validatedData.paperBy;
+    if (validatedData.paperFrom !== undefined) updateData.paperFrom = validatedData.paperFrom;
+    if (validatedData.paperFromCustom !== undefined) updateData.paperFromCustom = validatedData.paperFromCustom;
+    if (validatedData.paperIds !== undefined) updateData.paperIds = validatedData.paperIds;
+    if (validatedData.paperId !== undefined) updateData.paperId = validatedData.paperId;
+    if (validatedData.paperType !== undefined) updateData.paperType = validatedData.paperType;
+    if (validatedData.paperSize !== undefined) updateData.paperSize = validatedData.paperSize;
+    if (validatedData.paperWeight !== undefined) updateData.paperWeight = validatedData.paperWeight;
+    if (validatedData.paperDetails !== undefined) updateData.paperDetails = validatedData.paperDetails;
+    if (validatedData.totalBWPages !== undefined) updateData.totalBWPages = validatedData.totalBWPages;
+    if (validatedData.totalColorPages !== undefined) updateData.totalColorPages = validatedData.totalColorPages;
+    if (validatedData.pageColor !== undefined) updateData.pageColor = validatedData.pageColor;
+    if (validatedData.pageColorOther !== undefined) updateData.pageColorOther = validatedData.pageColorOther;
+    if (validatedData.bookSize !== undefined) updateData.bookSize = validatedData.bookSize;
+    if (validatedData.bookSizeOther !== undefined) updateData.bookSizeOther = validatedData.bookSizeOther;
+    if (validatedData.totalPlate !== undefined) updateData.totalPlate = validatedData.totalPlate;
+    if (validatedData.totalFarma !== undefined) updateData.totalFarma = validatedData.totalFarma;
+    if (validatedData.plateBy !== undefined) updateData.plateBy = validatedData.plateBy;
+    if (validatedData.plateFrom !== undefined) updateData.plateFrom = validatedData.plateFrom;
+    if (validatedData.plateSize !== undefined) updateData.plateSize = validatedData.plateSize;
+    if (validatedData.plateSizeOther !== undefined) updateData.plateSizeOther = validatedData.plateSizeOther;
+    if (validatedData.machineId !== undefined) updateData.machineId = validatedData.machineId;
+    if (validatedData.laminationThermal !== undefined) updateData.laminationThermal = validatedData.laminationThermal;
+    if (validatedData.normal !== undefined) updateData.normal = validatedData.normal;
+    if (validatedData.folding !== undefined) updateData.folding = validatedData.folding;
+    if (validatedData.binding !== undefined) updateData.binding = validatedData.binding;
+    if (validatedData.bindingOther !== undefined) updateData.bindingOther = validatedData.bindingOther;
+    if (validatedData.stitch !== undefined) updateData.stitch = validatedData.stitch;
+    if (validatedData.stitchOther !== undefined) updateData.stitchOther = validatedData.stitchOther;
+    if (validatedData.additional !== undefined) updateData.additional = validatedData.additional;
+    if (validatedData.relatedToJobId !== undefined) updateData.relatedToJobId = validatedData.relatedToJobId;
+    if (validatedData.remarks !== undefined) updateData.remarks = validatedData.remarks;
+    if (validatedData.specialInstructions !== undefined) updateData.specialInstructions = validatedData.specialInstructions;
+
     const job = await Job.findOneAndUpdate(
       { _id: id, adminId },
-      {
-        ...validatedData,
-        totalPages,
-      },
+      updateData,
       { new: true }
     ).populate('clientId', 'clientName address')
      .populate('paperId', 'clientName paperType paperTypeOther paperSize paperWeight units')
