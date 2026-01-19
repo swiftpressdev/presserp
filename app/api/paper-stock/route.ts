@@ -31,10 +31,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Paper ID is required' }, { status: 400 });
     }
 
-    // Ensure Job model is registered
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    const JobModel = (await import('@/models/Job')).default;
+    void JobModel;
 
     const stockEntries = await PaperStock.find({ adminId, paperId })
       .populate('jobId', 'jobNo jobName')

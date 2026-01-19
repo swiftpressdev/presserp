@@ -28,10 +28,9 @@ export async function GET(
     const adminId = getAdminId(user);
     const { id } = await params;
 
-    // Ensure Job model is registered
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    const JobModel = (await import('@/models/Job')).default;
+    void JobModel;
 
     const stockEntry = await PaperStock.findOne({ _id: id, adminId })
       .populate('jobId', 'jobNo jobName');
@@ -62,6 +61,11 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const JobModel = (await import('@/models/Job')).default;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 

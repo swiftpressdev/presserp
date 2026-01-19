@@ -152,19 +152,19 @@ export async function GET(
   try {
     await dbConnect();
     
-    // Ensure all models are registered before use
-    if (!mongoose.models.Client) {
-      await import('@/models/Client');
-    }
-    if (!mongoose.models.Paper) {
-      await import('@/models/Paper');
-    }
-    if (!mongoose.models.Equipment) {
-      await import('@/models/Equipment');
-    }
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    // This is necessary because Next.js module caching can get out of sync with mongoose.models
+    // Simply checking mongoose.models and importing isn't enough - we must access .default
+    const ClientModel = (await import('@/models/Client')).default;
+    const PaperModel = (await import('@/models/Paper')).default;
+    const EquipmentModel = (await import('@/models/Equipment')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    
+    // Use the imported models to ensure they're registered
+    void ClientModel;
+    void PaperModel;
+    void EquipmentModel;
+    void JobModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);
@@ -204,19 +204,20 @@ export async function PUT(
   try {
     await dbConnect();
     
-    // Ensure all models are registered before use
-    if (!mongoose.models.Client) {
-      await import('@/models/Client');
-    }
-    if (!mongoose.models.Paper) {
-      await import('@/models/Paper');
-    }
-    if (!mongoose.models.Equipment) {
-      await import('@/models/Equipment');
-    }
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    // This is necessary because Next.js module caching can get out of sync with mongoose.models
+    const ClientModel = (await import('@/models/Client')).default;
+    const PaperModel = (await import('@/models/Paper')).default;
+    const EquipmentModel = (await import('@/models/Equipment')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    const PaperStockModel = (await import('@/models/PaperStock')).default;
+    
+    // Use the imported models to ensure they're registered
+    void ClientModel;
+    void PaperModel;
+    void EquipmentModel;
+    void JobModel;
+    void PaperStockModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);
@@ -583,16 +584,16 @@ export async function DELETE(
   try {
     await dbConnect();
     
-    // Ensure all models are registered before use
-    if (!mongoose.models.Paper) {
-      await import('@/models/Paper');
-    }
-    if (!mongoose.models.PaperStock) {
-      await import('@/models/PaperStock');
-    }
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    // This is necessary because Next.js module caching can get out of sync with mongoose.models
+    const PaperModel = (await import('@/models/Paper')).default;
+    const PaperStockModel = (await import('@/models/PaperStock')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    
+    // Use the imported models to ensure they're registered
+    void PaperModel;
+    void PaperStockModel;
+    void JobModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);

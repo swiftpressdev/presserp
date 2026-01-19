@@ -46,13 +46,11 @@ export async function GET(
   try {
     await dbConnect();
     
-    // Ensure all models are registered before use
-    if (!mongoose.models.Client) {
-      await import('@/models/Client');
-    }
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);
@@ -89,13 +87,11 @@ export async function PUT(
   try {
     await dbConnect();
     
-    // Ensure all models are registered before use
-    if (!mongoose.models.Client) {
-      await import('@/models/Client');
-    }
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);
