@@ -15,6 +15,7 @@ const updatePaperStockSchema = z.object({
   addedStock: z.number().min(0, 'Added stock must be 0 or greater').optional(),
   remaining: z.number().optional(),
   remarks: z.string().optional(),
+  updatedAt: z.string().optional(), // ISO date string
 });
 
 export async function GET(
@@ -27,10 +28,9 @@ export async function GET(
     const adminId = getAdminId(user);
     const { id } = await params;
 
-    // Ensure Job model is registered
-    if (!mongoose.models.Job) {
-      await import('@/models/Job');
-    }
+    // Force model registration by accessing the default export
+    const JobModel = (await import('@/models/Job')).default;
+    void JobModel;
 
     const stockEntry = await PaperStock.findOne({ _id: id, adminId })
       .populate('jobId', 'jobNo jobName');
@@ -61,6 +61,11 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const JobModel = (await import('@/models/Job')).default;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
@@ -118,6 +123,11 @@ export async function PUT(
     // Handle addedStock - set to undefined if 0 to keep it clean
     if (validatedData.addedStock !== undefined) {
       updateData.addedStock = addedStock > 0 ? addedStock : undefined;
+    }
+    
+    // Handle updatedAt - convert ISO string to Date if provided
+    if (validatedData.updatedAt) {
+      updateData.updatedAt = new Date(validatedData.updatedAt);
     }
     
     if (validatedData.jobId && !validatedData.jobNo) {

@@ -18,7 +18,7 @@ export interface IJob extends Document {
   adminId: Types.ObjectId | string;
   jobNo: string;
   jobName: string;
-  clientId: Types.ObjectId | string;
+  clientId?: Types.ObjectId | string;
   jobDate: string;
   deliveryDate: string;
   jobTypes: JobType[];
@@ -29,7 +29,7 @@ export interface IJob extends Document {
   paperIds?: Types.ObjectId[] | string[];
   paperId: Types.ObjectId | string;
   paperType?: string;
-  paperSize: string;
+  paperSize?: string;
   paperWeight?: string;
   paperDetails?: Array<{
     paperId: string;
@@ -41,8 +41,8 @@ export interface IJob extends Document {
     issuedQuantity: number;
     wastage: number;
   }>;
-  totalBWPages: number;
-  totalColorPages: number;
+  totalBWPages?: number;
+  totalColorPages?: number;
   totalPages: number;
   pageColor?: PageColorType;
   pageColorOther?: string;
@@ -50,14 +50,14 @@ export interface IJob extends Document {
   bookSizeOther?: string;
   totalPlate?: string;
   totalFarma?: string;
-  plateBy: PlateBy;
+  plateBy?: PlateBy;
   plateFrom?: string;
   plateSize?: PlateSizeType;
   plateSizeOther?: string;
-  machineId: Types.ObjectId | string;
+  machineId?: Types.ObjectId | string;
   laminationThermal?: LaminationType;
   normal?: NormalType;
-  folding: boolean;
+  folding?: boolean;
   binding?: BindingType;
   bindingOther?: string;
   stitch?: StitchType;
@@ -88,7 +88,7 @@ const JobSchema = new Schema<IJob>(
     clientId: {
       type: Schema.Types.ObjectId,
       ref: 'Client',
-      required: true,
+      required: false,
     },
     jobDate: {
       type: String,
@@ -181,12 +181,12 @@ const JobSchema = new Schema<IJob>(
     ],
     totalBWPages: {
       type: Number,
-      required: true,
+      required: false,
       default: 0,
     },
     totalColorPages: {
       type: Number,
-      required: true,
+      required: false,
       default: 0,
     },
     totalPages: {
@@ -212,7 +212,7 @@ const JobSchema = new Schema<IJob>(
     plateBy: {
       type: String,
       enum: Object.values(PlateBy),
-      required: true,
+      required: false,
     },
     plateFrom: {
       type: String,
@@ -238,7 +238,7 @@ const JobSchema = new Schema<IJob>(
     machineId: {
       type: Schema.Types.ObjectId,
       ref: 'Equipment',
-      required: true,
+      required: false,
     },
     laminationThermal: {
       type: String,

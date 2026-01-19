@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import Job from '@/models/Job';
 import Client from '@/models/Client';
 import Paper from '@/models/Paper';
@@ -25,7 +26,7 @@ import { z } from 'zod';
 
 const jobSchema = z.object({
   jobName: z.string().min(1, 'Job name is required'),
-  clientId: z.string().min(1, 'Client is required'),
+  clientId: z.string().optional(),
   jobDate: z.string().min(1, 'Job date is required'),
   deliveryDate: z.string().min(1, 'Delivery date is required'),
   jobTypes: z.array(z.nativeEnum(JobType)).min(1, 'At least one job type is required'),
@@ -48,22 +49,22 @@ const jobSchema = z.object({
     issuedQuantity: z.number().min(0),
     wastage: z.number().min(0),
   })).optional(),
-  totalBWPages: z.number().min(0),
-  totalColorPages: z.number().min(0),
+  totalBWPages: z.number().min(0).optional(),
+  totalColorPages: z.number().min(0).optional(),
   pageColor: z.nativeEnum(PageColorType).optional(),
   pageColorOther: z.string().optional(),
   bookSize: z.nativeEnum(BookSizeType).optional(),
   bookSizeOther: z.string().optional(),
   totalPlate: z.string().optional(),
   totalFarma: z.string().optional(),
-  plateBy: z.nativeEnum(PlateBy),
+  plateBy: z.nativeEnum(PlateBy).optional(),
   plateFrom: z.string().optional(),
   plateSize: z.nativeEnum(PlateSizeType).optional(),
   plateSizeOther: z.string().optional(),
-  machineId: z.string().min(1, 'Machine is required'),
+  machineId: z.string().optional(),
   laminationThermal: z.nativeEnum(LaminationType).optional(),
   normal: z.nativeEnum(NormalType).optional(),
-  folding: z.boolean(),
+  folding: z.boolean().optional(),
   binding: z.nativeEnum(BindingType).optional(),
   bindingOther: z.string().optional(),
   stitch: z.nativeEnum(StitchType).optional(),
@@ -94,16 +95,6 @@ const jobSchema = z.object({
     }
     return true;
   }
-  // If paperBy is not set, paperId and paperSize are required
-  if (!data.paperBy) {
-    if (!data.paperId || !data.paperId.trim().length) {
-      return false;
-    }
-    if (!data.paperSize || !data.paperSize.trim().length) {
-      return false;
-    }
-    return true;
-  }
   return true;
 }, (data) => {
   if ((data.paperBy === 'customer' || data.paperBy === 'company') && data.paperDetails && data.paperDetails.length > 0) {
@@ -130,24 +121,26 @@ const jobSchema = z.object({
       }
     }
   }
-  if (!data.paperBy && !data.paperId) {
-    return {
-      message: 'Paper ID is required',
-      path: ['paperId'],
-    };
-  }
-  if (!data.paperBy && (!data.paperSize || !data.paperSize.trim().length)) {
-    return {
-      message: 'Paper size is required',
-      path: ['paperSize'],
-    };
-  }
   return {};
 });
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    // This is necessary because Next.js module caching can get out of sync with mongoose.models
+    const ClientModel = (await import('@/models/Client')).default;
+    const PaperModel = (await import('@/models/Paper')).default;
+    const EquipmentModel = (await import('@/models/Equipment')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    
+    // Use the imported models to ensure they're registered
+    void ClientModel;
+    void PaperModel;
+    void EquipmentModel;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
@@ -172,16 +165,35 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    // This is necessary because Next.js module caching can get out of sync with mongoose.models
+    const ClientModel = (await import('@/models/Client')).default;
+    const PaperModel = (await import('@/models/Paper')).default;
+    const EquipmentModel = (await import('@/models/Equipment')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    const PaperStockModel = (await import('@/models/PaperStock')).default;
+    
+    // Use the imported models to ensure they're registered
+    void ClientModel;
+    void PaperModel;
+    void EquipmentModel;
+    void JobModel;
+    void PaperStockModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
     const body = await request.json();
     const validatedData = jobSchema.parse(body);
 
-    await Client.findOne({ _id: validatedData.clientId, adminId });
+    // Validate clientId only if provided
+    if (validatedData.clientId) {
+      await Client.findOne({ _id: validatedData.clientId, adminId });
+    }
     // Validate paperId only if it's provided (not when using paperIds)
     if (validatedData.paperId) {
-    await Paper.findOne({ _id: validatedData.paperId, adminId });
+      await Paper.findOne({ _id: validatedData.paperId, adminId });
     }
     // Validate paperIds if provided
     if (validatedData.paperIds && validatedData.paperIds.length > 0) {
@@ -189,11 +201,14 @@ export async function POST(request: NextRequest) {
         await Paper.findOne({ _id: paperId, adminId });
       }
     }
-    await Equipment.findOne({ _id: validatedData.machineId, adminId });
+    // Validate machineId only if provided
+    if (validatedData.machineId) {
+      await Equipment.findOne({ _id: validatedData.machineId, adminId });
+    }
 
     const jobNo = await getNextSequenceNumber(adminId, CounterName.JOB);
 
-    const totalPages = validatedData.totalBWPages + validatedData.totalColorPages;
+    const totalPages = (validatedData.totalBWPages || 0) + (validatedData.totalColorPages || 0);
 
     // Validate stock availability before creating job
     if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {

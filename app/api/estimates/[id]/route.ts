@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import Estimate from '@/models/Estimate';
 import Job from '@/models/Job';
 import Client from '@/models/Client';
@@ -44,11 +45,12 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    // Ensure Client model is registered before using populate
-    const mongoose = await import('mongoose');
-    if (!mongoose.default.models.Client) {
-      await import('@/models/Client');
-    }
+    
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
     
     const user = await requireAuth();
     const adminId = getAdminId(user);
@@ -84,6 +86,13 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;

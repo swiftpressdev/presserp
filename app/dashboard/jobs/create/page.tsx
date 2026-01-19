@@ -243,6 +243,8 @@ export default function CreateJobPage() {
         paperIds: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperIds.length > 0 ? formData.paperIds : undefined,
         paperId: (formData.paperBy === 'customer' || formData.paperBy === 'company') ? undefined : (formData.paperId || undefined),
         paperDetails: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperDetails.length > 0 ? formData.paperDetails : undefined,
+        totalBWPages: formData.totalBWPages !== undefined ? formData.totalBWPages : undefined,
+        totalColorPages: formData.totalColorPages !== undefined ? formData.totalColorPages : undefined,
         pageColor: formData.pageColor || undefined,
         pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
         bookSize: formData.bookSize || undefined,
@@ -325,7 +327,6 @@ export default function CreateJobPage() {
                 }}
                 label="Client"
                 placeholder="Search client..."
-                required
                 emptyMessage="No clients available"
                 maxSelection={1}
               />
@@ -385,7 +386,7 @@ export default function CreateJobPage() {
                 step="0.00001"
                 value={formData.quantity === 0 ? '' : formData.quantity}
                 onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  const value = e.target.value === '' ? 1 : parseFloat(e.target.value) || 1;
                   setFormData({ ...formData, quantity: value });
                 }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -394,7 +395,7 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Paper By <span className="text-red-500">*</span>
+                Paper By
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
@@ -444,13 +445,12 @@ export default function CreateJobPage() {
                       Paper {index + 1}: {paperDetail.paperFrom} - {paperDetail.size} - {paperDetail.weight}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+                      <div>
               <label className="block text-sm font-medium text-gray-700">
-                          Type <span className="text-red-500">*</span>
+                          Type
               </label>
                         <input
                           type="text"
-                required
                           value={paperDetail.type}
                           onChange={(e) => handlePaperDetailChange(index, 'type', e.target.value)}
                           disabled
@@ -459,11 +459,10 @@ export default function CreateJobPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Size <span className="text-red-500">*</span>
+                          Size
                         </label>
                         <input
                           type="text"
-                          required
                           value={paperDetail.size}
                           onChange={(e) => handlePaperDetailChange(index, 'size', e.target.value)}
                           disabled
@@ -472,11 +471,10 @@ export default function CreateJobPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Weight <span className="text-red-500">*</span>
+                          Weight
                         </label>
                         <input
                           type="text"
-                          required
                           value={paperDetail.weight}
                           onChange={(e) => handlePaperDetailChange(index, 'weight', e.target.value)}
                           disabled
@@ -485,11 +483,10 @@ export default function CreateJobPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Paper From <span className="text-red-500">*</span>
+                          Paper From
                         </label>
                         <input
                           type="text"
-                          required
                           value={paperDetail.paperFrom}
                           onChange={(e) => handlePaperDetailChange(index, 'paperFrom', e.target.value)}
                           disabled
@@ -498,11 +495,10 @@ export default function CreateJobPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Unit <span className="text-red-500">*</span>
+                          Unit
                         </label>
                         <input
                           type="text"
-                          required
                           value={paperDetail.unit}
                           onChange={(e) => handlePaperDetailChange(index, 'unit', e.target.value)}
                           disabled
@@ -511,11 +507,10 @@ export default function CreateJobPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Issued Quantity <span className="text-red-500">*</span>
+                          Issued Quantity
                         </label>
                         <input
                           type="number"
-                          required
                           min="0"
                           step="0.00001"
                           value={paperDetail.issuedQuantity}
@@ -526,11 +521,10 @@ export default function CreateJobPage() {
             </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Wastage <span className="text-red-500">*</span>
+                          Wastage
                         </label>
                         <input
                           type="number"
-                          required
                           min="0"
                           step="0.00001"
                           value={paperDetail.wastage}
@@ -547,11 +541,10 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Total B/W Pages <span className="text-red-500">*</span>
+                Total B/W Pages
               </label>
               <input
                 type="number"
-                required
                 min="0"
                 step="0.00001"
                 value={formData.totalBWPages}
@@ -565,11 +558,10 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Total Color Pages <span className="text-red-500">*</span>
+                Total Color Pages
               </label>
               <input
                 type="number"
-                required
                 min="0"
                 step="0.00001"
                 value={formData.totalColorPages}
@@ -610,11 +602,10 @@ export default function CreateJobPage() {
             {formData.pageColor === PageColorType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Page Color <span className="text-red-500">*</span>
+                  Specify Page Color
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.pageColorOther}
                   onChange={(e) => setFormData({ ...formData, pageColorOther: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -641,11 +632,10 @@ export default function CreateJobPage() {
             {formData.bookSize === BookSizeType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Finish Size <span className="text-red-500">*</span>
+                  Specify Finish Size
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.bookSizeOther}
                   onChange={(e) => setFormData({ ...formData, bookSizeOther: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -677,7 +667,7 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Plate By <span className="text-red-500">*</span>
+                Plate By
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
@@ -733,11 +723,10 @@ export default function CreateJobPage() {
             {formData.plateSize === PlateSizeType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Plate Size <span className="text-red-500">*</span>
+                  Specify Plate Size
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.plateSizeOther}
                   onChange={(e) => setFormData({ ...formData, plateSizeOther: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -747,10 +736,9 @@ export default function CreateJobPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Machine <span className="text-red-500">*</span>
+                Machine
               </label>
               <select
-                required
                 value={formData.machineId}
                 onChange={(e) => setFormData({ ...formData, machineId: e.target.value })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -843,11 +831,10 @@ export default function CreateJobPage() {
             {formData.binding === BindingType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Binding <span className="text-red-500">*</span>
+                  Specify Binding
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.bindingOther}
                   onChange={(e) => setFormData({ ...formData, bindingOther: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -875,11 +862,10 @@ export default function CreateJobPage() {
             {formData.stitch === StitchType.OTHER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Specify Stitch <span className="text-red-500">*</span>
+                  Specify Stitch
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.stitchOther}
                   onChange={(e) => setFormData({ ...formData, stitchOther: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"

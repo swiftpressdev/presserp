@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-// Import models to ensure they're registered
-import '@/models/Client';
-import '@/models/Job';
 import Challan from '@/models/Challan';
 import { requireAuth, getAdminId } from '@/lib/auth';
 import { getNextSequenceNumber, CounterName } from '@/lib/counterService';
@@ -26,6 +23,13 @@ const challanSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 

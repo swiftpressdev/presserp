@@ -210,21 +210,28 @@ export default function EditJobPage() {
         });
       }
 
+      // Ensure arrays are properly initialized (handle null/undefined)
+      const jobTypes = Array.isArray(job.jobTypes) ? job.jobTypes : [];
+      const additional = Array.isArray(job.additional) ? job.additional : [];
+      
+      // Ensure boolean is properly handled (handle null/undefined)
+      const folding = typeof job.folding === 'boolean' ? job.folding : false;
+
       const initialFormData = {
         jobName: job.jobName || '',
         clientId,
         jobDate: job.jobDate || '',
         deliveryDate: job.deliveryDate || '',
-        jobTypes: job.jobTypes || [],
+        jobTypes,
         quantity: job.quantity || 1,
-        paperBy: (job as any).paperBy || job.paperFrom || '',
+        paperBy: (job as any).paperBy || (job.paperFrom ? 'customer' : '') || '',
         paperFrom: (job as any).paperFrom || '',
         paperFromCustom: job.paperFromCustom || '',
         paperIds,
         paperId,
         paperDetails,
-        totalBWPages: job.totalBWPages || 0,
-        totalColorPages: job.totalColorPages || 0,
+        totalBWPages: job.totalBWPages !== undefined && job.totalBWPages !== null ? job.totalBWPages : 0,
+        totalColorPages: job.totalColorPages !== undefined && job.totalColorPages !== null ? job.totalColorPages : 0,
         pageColor: job.pageColor || '',
         pageColorOther: job.pageColorOther || '',
         bookSize: job.bookSize || '',
@@ -238,12 +245,12 @@ export default function EditJobPage() {
         machineId,
         laminationThermal: job.laminationThermal || '',
         normal: job.normal || '',
-        folding: job.folding || false,
+        folding,
         binding: job.binding || '',
         bindingOther: job.bindingOther || '',
         stitch: job.stitch || '',
         stitchOther: job.stitchOther || '',
-        additional: job.additional || [],
+        additional,
         relatedToJobId,
         remarks: job.remarks || '',
         specialInstructions: job.specialInstructions || '',
@@ -372,12 +379,18 @@ export default function EditJobPage() {
     try {
       const submitData = {
         ...formData,
+        // Always include arrays and booleans (even if empty/false)
+        jobTypes: formData.jobTypes || [],
+        additional: formData.additional || [],
+        folding: formData.folding !== undefined ? formData.folding : false,
         paperBy: formData.paperBy || undefined,
         paperFrom: (formData.paperBy === 'customer' || formData.paperBy === 'company') ? formData.paperFrom : undefined,
         paperFromCustom: undefined, // Removed Page From (Custom) field
         paperIds: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperIds.length > 0 ? formData.paperIds : undefined,
         paperId: (formData.paperBy === 'customer' || formData.paperBy === 'company') ? undefined : formData.paperId || undefined,
         paperDetails: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperDetails.length > 0 ? formData.paperDetails : undefined,
+        totalBWPages: formData.totalBWPages !== undefined ? formData.totalBWPages : undefined,
+        totalColorPages: formData.totalColorPages !== undefined ? formData.totalColorPages : undefined,
         pageColor: formData.pageColor || undefined,
         pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
         bookSize: formData.bookSize || undefined,
@@ -392,7 +405,7 @@ export default function EditJobPage() {
         bindingOther: formData.binding === BindingType.OTHER ? formData.bindingOther : undefined,
         stitch: formData.stitch || undefined,
         stitchOther: formData.stitch === StitchType.OTHER ? formData.stitchOther : undefined,
-        relatedToJobId: formData.relatedToJobId || undefined,
+        relatedToJobId: formData.relatedToJobId && formData.relatedToJobId.length > 0 ? formData.relatedToJobId : undefined,
       };
 
       const response = await fetch(`/api/jobs/${jobId}`, {
@@ -485,7 +498,6 @@ export default function EditJobPage() {
                 }}
                 label="Client"
                 placeholder="Search client..."
-                required
                 emptyMessage="No clients available"
                 maxSelection={1}
               />

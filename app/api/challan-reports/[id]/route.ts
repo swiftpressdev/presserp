@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-// Import models to ensure they're registered
-import '@/models/Client';
-import '@/models/Job';
 import ChallanReport from '@/models/ChallanReport';
 import Challan from '@/models/Challan';
 import { requireAuth, getAdminId } from '@/lib/auth';
@@ -19,6 +16,11 @@ export async function GET(
 ) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    void ClientModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
     const { id } = await params;
@@ -52,6 +54,13 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
+    
+    // Force model registration by accessing the default export
+    const ClientModel = (await import('@/models/Client')).default;
+    const JobModel = (await import('@/models/Job')).default;
+    void ClientModel;
+    void JobModel;
+    
     const user = await requireAuth();
     const adminId = getAdminId(user);
 
