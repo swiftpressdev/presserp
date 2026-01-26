@@ -98,12 +98,36 @@ export async function POST(request: NextRequest) {
     const totalColorPages = jobs.reduce((sum, job) => sum + (job.totalColorPages || 0), 0);
     const totalPages = jobs.reduce((sum, job) => sum + (job.totalPages || 0), 0);
 
-    // Get paperSize from first job (assuming all jobs have same paper size)
-    const paperSize = jobs[0]?.paperSize || '';
+    // Collect all unique paper sizes from all jobs
+    const allPaperSizes: string[] = [];
+    jobs.forEach(job => {
+      if (job.paperSize) {
+        // paperSize might already be comma-separated, so split and add each
+        String(job.paperSize).split(',').map(s => s.trim()).filter(Boolean).forEach(size => {
+          if (!allPaperSizes.includes(size)) allPaperSizes.push(size);
+        });
+      } else if (job.paperDetails && Array.isArray(job.paperDetails) && job.paperDetails.length > 0) {
+        // Fallback to paperDetails for legacy jobs
+        (job.paperDetails as any[]).forEach(detail => {
+          if (detail.size && !allPaperSizes.includes(detail.size)) {
+            allPaperSizes.push(detail.size);
+          }
+        });
+      }
+    });
+    const paperSize = allPaperSizes.join(', ');
 
-    // Get finishSize from first job if not provided in request
-    const firstJob = jobs[0];
-    const finishSize = validatedData.finishSize || (firstJob?.bookSize === 'Other' && firstJob?.bookSizeOther ? firstJob.bookSizeOther : firstJob?.bookSize || '');
+    // Collect all unique finish sizes from all jobs
+    const allFinishSizes: string[] = [];
+    jobs.forEach(job => {
+      const jobFinishSize = job.bookSize === 'Other' && job.bookSizeOther 
+        ? job.bookSizeOther 
+        : job.bookSize || '';
+      if (jobFinishSize && !allFinishSizes.includes(jobFinishSize)) {
+        allFinishSizes.push(jobFinishSize);
+      }
+    });
+    const finishSize = validatedData.finishSize || allFinishSizes.join(', ');
 
     const estimateNumber = await getNextSequenceNumber(adminId, CounterName.ESTIMATE);
 

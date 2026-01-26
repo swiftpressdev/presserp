@@ -168,7 +168,7 @@ export default function JobsPage() {
         paperFromCustom: job.paperFromCustom,
         paperName,
         paperType: finalPaperType,
-        paperSize: job.paperSize,
+        paperSize: job.paperSize || ((job as any).paperDetails?.map((d: any) => d.size).filter((s: string, i: number, arr: string[]) => s && arr.indexOf(s) === i).join(', ')) || '',
         paperWeight: (job as any).paperWeight || '',
         paperDetails: (job as any).paperDetails || undefined,
         totalBWPages: job.totalBWPages,

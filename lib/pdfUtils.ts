@@ -987,8 +987,8 @@ export async function generateJobPDF(data: JobData) {
     }
   }
   
-  // Paper Details (when paperBy is 'customer' and paperDetails exist)
-  if (data.paperBy === 'customer' && data.paperDetails && data.paperDetails.length > 0) {
+  // Paper Details (when paperBy is 'customer' or 'company' and paperDetails exist)
+  if ((data.paperBy === 'customer' || data.paperBy === 'company') && data.paperDetails && data.paperDetails.length > 0) {
     // Display each paper detail
     data.paperDetails.forEach((paperDetail, index) => {
       if (index > 0) {

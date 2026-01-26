@@ -210,6 +210,14 @@ export async function POST(request: NextRequest) {
 
     const totalPages = (validatedData.totalBWPages || 0) + (validatedData.totalColorPages || 0);
 
+    // Derive paperSize from paperDetails if not explicitly provided
+    // Collect all unique paper sizes from paperDetails and join with comma
+    const paperSizesFromDetails = validatedData.paperDetails
+      ?.map(detail => detail.size)
+      .filter((size, index, arr) => size && arr.indexOf(size) === index) // unique non-empty values
+      .join(', ') || '';
+    const paperSize = validatedData.paperSize || paperSizesFromDetails;
+
     // Validate stock availability before creating job
     if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       for (const paperDetail of validatedData.paperDetails) {
@@ -250,6 +258,7 @@ export async function POST(request: NextRequest) {
       ...validatedData,
       jobNo,
       totalPages,
+      paperSize,
       adminId,
       createdBy: user.email,
     });
