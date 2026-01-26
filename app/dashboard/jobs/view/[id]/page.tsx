@@ -236,7 +236,7 @@ export default function ViewJobPage() {
               </div>
             )}
 
-            {job.paperBy === 'customer' && job.paperDetails && job.paperDetails.length > 0 ? (
+            {(job.paperBy === 'customer' || job.paperBy === 'company') && job.paperDetails && job.paperDetails.length > 0 ? (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Paper Details</label>
                 <div className="space-y-4">
@@ -302,11 +302,11 @@ export default function ViewJobPage() {
                   </div>
                 </div>
 
-                {job.paperSize && (
+                {(job.paperSize || (job.paperDetails && job.paperDetails.length > 0)) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Paper Size</label>
                     <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                      {job.paperSize}
+                      {job.paperSize || job.paperDetails?.map(d => d.size).filter((s, i, arr) => s && arr.indexOf(s) === i).join(', ')}
                     </div>
                   </div>
                 )}

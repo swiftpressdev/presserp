@@ -24,7 +24,8 @@ interface Job {
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
-  paperSize: string;
+  paperSize?: string;
+  paperDetails?: Array<{ size: string; [key: string]: any }>;
   bookSize?: string;
   bookSizeOther?: string;
 }
@@ -122,14 +123,37 @@ export default function CreateEstimatePage() {
       const totalColorPages = selectedJobs.reduce((sum, job) => sum + (job.totalColorPages || 0), 0);
       const totalPages = selectedJobs.reduce((sum, job) => sum + (job.totalPages || 0), 0);
       
-      // Get paperSize from first job (assuming all jobs have same paper size)
-      const paperSize = selectedJobs[0]?.paperSize || '';
+      // Collect all unique paper sizes from all selected jobs
+      // First try job.paperSize, then fallback to paperDetails for legacy jobs
+      const allPaperSizes: string[] = [];
+      selectedJobs.forEach(job => {
+        if (job.paperSize) {
+          // paperSize might already be comma-separated, so split and add each
+          job.paperSize.split(',').map(s => s.trim()).filter(Boolean).forEach(size => {
+            if (!allPaperSizes.includes(size)) allPaperSizes.push(size);
+          });
+        } else if (job.paperDetails && job.paperDetails.length > 0) {
+          // Fallback to paperDetails for legacy jobs
+          job.paperDetails.forEach(detail => {
+            if (detail.size && !allPaperSizes.includes(detail.size)) {
+              allPaperSizes.push(detail.size);
+            }
+          });
+        }
+      });
+      const paperSize = allPaperSizes.join(', ');
       
-      // Get finishSize from first job
-      const firstJob = selectedJobs[0];
-      const finishSize = firstJob?.bookSize === 'Other' && firstJob?.bookSizeOther 
-        ? firstJob.bookSizeOther 
-        : firstJob?.bookSize || '';
+      // Collect all unique finish sizes from all selected jobs
+      const allFinishSizes: string[] = [];
+      selectedJobs.forEach(job => {
+        const jobFinishSize = job.bookSize === 'Other' && job.bookSizeOther 
+          ? job.bookSizeOther 
+          : job.bookSize || '';
+        if (jobFinishSize && !allFinishSizes.includes(jobFinishSize)) {
+          allFinishSizes.push(jobFinishSize);
+        }
+      });
+      const finishSize = allFinishSizes.join(', ');
       
       setJobDetails({
         totalBWPages,

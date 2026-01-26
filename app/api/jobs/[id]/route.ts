@@ -225,6 +225,14 @@ export async function PUT(
 
     const totalPages = (validatedData.totalBWPages || 0) + (validatedData.totalColorPages || 0);
 
+    // Derive paperSize from paperDetails if not explicitly provided
+    // Collect all unique paper sizes from paperDetails and join with comma
+    const paperSizesFromDetails = validatedData.paperDetails
+      ?.map(detail => detail.size)
+      .filter((size, index, arr) => size && arr.indexOf(size) === index) // unique non-empty values
+      .join(', ') || '';
+    const paperSize = validatedData.paperSize || paperSizesFromDetails;
+
     // Get existing job to check if paperIds changed
     const existingJob = await Job.findOne({ _id: id, adminId });
     if (!existingJob) {
@@ -297,6 +305,7 @@ export async function PUT(
       jobTypes: validatedData.jobTypes,
       quantity: validatedData.quantity,
       totalPages,
+      paperSize, // Always include derived paperSize
     };
 
     // Add optional fields only if they are defined (including empty arrays and false booleans)
@@ -307,7 +316,7 @@ export async function PUT(
     if (validatedData.paperIds !== undefined) updateData.paperIds = validatedData.paperIds;
     if (validatedData.paperId !== undefined) updateData.paperId = validatedData.paperId;
     if (validatedData.paperType !== undefined) updateData.paperType = validatedData.paperType;
-    if (validatedData.paperSize !== undefined) updateData.paperSize = validatedData.paperSize;
+    // paperSize is always set above from derived value, no need for conditional
     if (validatedData.paperWeight !== undefined) updateData.paperWeight = validatedData.paperWeight;
     if (validatedData.paperDetails !== undefined) updateData.paperDetails = validatedData.paperDetails;
     if (validatedData.totalBWPages !== undefined) updateData.totalBWPages = validatedData.totalBWPages;
