@@ -61,6 +61,10 @@ export default function PaperStockPage() {
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddStockForm, setShowAddStockForm] = useState(false);
+  const [lastSubmittedAddStock, setLastSubmittedAddStock] = useState<number | null>(null);
+  const [addStockValueChangedSinceSubmit, setAddStockValueChangedSinceSubmit] = useState(true);
+  const [originalAddStockFormData, setOriginalAddStockFormData] = useState<typeof addStockFormData | null>(null);
+  const [originalEntryFormData, setOriginalEntryFormData] = useState<typeof formData | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -163,6 +167,7 @@ export default function PaperStockPage() {
       toast.success(editingId ? 'Stock entry updated successfully' : 'Stock entry added successfully');
       setShowAddForm(false);
       setEditingId(null);
+      setOriginalEntryFormData(null);
       setFormData({
         date: getCurrentBSDate(),
         updatedAtDate: '',
@@ -226,14 +231,19 @@ export default function PaperStockPage() {
       }
 
       toast.success(editingId ? 'Stock addition updated successfully' : 'Stock added successfully');
-      setShowAddStockForm(false);
-      setEditingId(null);
-      setAddStockFormData({
-        date: getCurrentBSDate(),
-        updatedAtDate: '',
-        addedStock: 0,
-        remarks: '',
-      });
+      setLastSubmittedAddStock(addStockFormData.addedStock);
+      setAddStockValueChangedSinceSubmit(false);
+      if (editingId) {
+        setShowAddStockForm(false);
+        setEditingId(null);
+        setOriginalAddStockFormData(null);
+        setAddStockFormData({
+          date: getCurrentBSDate(),
+          updatedAtDate: '',
+          addedStock: 0,
+          remarks: '',
+        });
+      }
       fetchData();
     } catch (error: any) {
       toast.error(error.message || 'Failed to add stock');
@@ -242,20 +252,25 @@ export default function PaperStockPage() {
 
   const handleEdit = (entry: PaperStock) => {
     setEditingId(entry._id);
+    setLastSubmittedAddStock(null);
+    setAddStockValueChangedSinceSubmit(true);
     const updatedAtBS = entry.updatedAt ? convertDateToBS(new Date(entry.updatedAt)) : getCurrentBSDate();
     
     if (entry.addedStock && entry.addedStock > 0) {
       // Editing an add stock entry
-      setAddStockFormData({
+      const initialAddStock = {
         date: entry.date,
         updatedAtDate: updatedAtBS,
         addedStock: entry.addedStock,
         remarks: entry.remarks || '',
-      });
+      };
+      setAddStockFormData(initialAddStock);
+      setOriginalAddStockFormData(JSON.parse(JSON.stringify(initialAddStock)));
+      setOriginalEntryFormData(null);
       setShowAddStockForm(true);
     } else {
       // Editing a regular stock entry
-      setFormData({
+      const initialEntry = {
         date: entry.date,
         updatedAtDate: updatedAtBS,
         jobNo: entry.jobNo || '',
@@ -263,7 +278,10 @@ export default function PaperStockPage() {
         issuedPaper: entry.issuedPaper,
         wastage: entry.wastage,
         remarks: entry.remarks || '',
-      });
+      };
+      setFormData(initialEntry);
+      setOriginalEntryFormData(JSON.parse(JSON.stringify(initialEntry)));
+      setOriginalAddStockFormData(null);
       setShowAddForm(true);
     }
   };
@@ -272,6 +290,9 @@ export default function PaperStockPage() {
     if (!entry || !entry.updatedAt) return '-';
     return formatBSDate(convertDateToBS(new Date(entry.updatedAt)));
   };
+
+  const hasAddStockFormChanges = !originalAddStockFormData || JSON.stringify(addStockFormData) !== JSON.stringify(originalAddStockFormData);
+  const hasEntryFormChanges = !originalEntryFormData || JSON.stringify(formData) !== JSON.stringify(originalEntryFormData);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this stock entry?')) {
@@ -413,6 +434,10 @@ export default function PaperStockPage() {
                 setShowAddStockForm(!showAddStockForm);
                 setShowAddForm(false);
                 setEditingId(null);
+                setLastSubmittedAddStock(null);
+                setAddStockValueChangedSinceSubmit(true);
+                setOriginalAddStockFormData(null);
+                setOriginalEntryFormData(null);
                 setAddStockFormData({
                   date: getCurrentBSDate(),
                   updatedAtDate: '',
@@ -516,7 +541,10 @@ export default function PaperStockPage() {
                     min="0.01"
                     step="0.00001"
                     value={addStockFormData.addedStock}
-                    onChange={(e) => setAddStockFormData({ ...addStockFormData, addedStock: Number(e.target.value) })}
+                    onChange={(e) => {
+                      setAddStockFormData({ ...addStockFormData, addedStock: Number(e.target.value) });
+                      setAddStockValueChangedSinceSubmit(true);
+                    }}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -533,7 +561,11 @@ export default function PaperStockPage() {
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                  disabled={
+                    addStockFormData.addedStock <= 0 ||
+                    (editingId ? !hasAddStockFormChanges : (lastSubmittedAddStock !== null && !addStockValueChangedSinceSubmit))
+                  }
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingId ? 'Update' : 'Add'} Stock
                 </button>
@@ -542,6 +574,7 @@ export default function PaperStockPage() {
                   onClick={() => {
                     setShowAddStockForm(false);
                     setEditingId(null);
+                    setOriginalAddStockFormData(null);
                     setAddStockFormData({
                       date: getCurrentBSDate(),
                       updatedAtDate: '',
@@ -648,7 +681,8 @@ export default function PaperStockPage() {
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  disabled={!!(editingId && !hasEntryFormChanges)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingId ? 'Update' : 'Add'} Entry
                 </button>
@@ -657,6 +691,7 @@ export default function PaperStockPage() {
                   onClick={() => {
                     setShowAddForm(false);
                     setEditingId(null);
+                    setOriginalEntryFormData(null);
                     setFormData({
                       date: getCurrentBSDate(),
                       updatedAtDate: '',
