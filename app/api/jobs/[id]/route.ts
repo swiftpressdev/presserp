@@ -406,7 +406,7 @@ export async function PUT(
         );
 
         // Use the updated remaining value for next iteration
-        previousRemaining = updatedEntry?.remaining || currentRemaining;
+        previousRemaining = updatedEntry?.remaining ?? currentRemaining;
       }
     };
 
@@ -687,7 +687,7 @@ export async function DELETE(
           );
 
           // Use the updated remaining value for next iteration
-          previousRemaining = updatedEntry?.remaining || currentRemaining;
+          previousRemaining = updatedEntry?.remaining ?? currentRemaining;
         }
       };
 

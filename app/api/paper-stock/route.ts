@@ -107,8 +107,17 @@ export async function POST(request: NextRequest) {
       // Adding new stock
       remaining = previousRemaining + addedStock;
     } else {
-      // Deducting stock
-      remaining = previousRemaining - validatedData.issuedPaper - validatedData.wastage;
+      // Deducting stock - block if stock would go negative
+      const totalDeduct = validatedData.issuedPaper + validatedData.wastage;
+      if (previousRemaining < totalDeduct) {
+        return NextResponse.json(
+          {
+            error: `Insufficient paper stock. Available: ${previousRemaining}, required: ${totalDeduct} (issued: ${validatedData.issuedPaper} + wastage: ${validatedData.wastage}). Paper issues are not allowed when stock is not enough.`,
+          },
+          { status: 400 }
+        );
+      }
+      remaining = previousRemaining - totalDeduct;
     }
 
     // If jobId is provided, populate job details
@@ -172,7 +181,7 @@ export async function POST(request: NextRequest) {
           );
 
           // Use the updated remaining value for next iteration
-          previousRemaining = updatedEntry?.remaining || currentRemaining;
+          previousRemaining = updatedEntry?.remaining ?? currentRemaining;
         }
       };
 

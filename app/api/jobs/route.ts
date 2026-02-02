@@ -222,10 +222,9 @@ export async function POST(request: NextRequest) {
     if ((validatedData.paperBy === 'customer' || validatedData.paperBy === 'company') && validatedData.paperDetails && validatedData.paperDetails.length > 0) {
       for (const paperDetail of validatedData.paperDetails) {
         const paperId = paperDetail.paperId;
-        // Get current remaining stock for this paper
+        // Get current remaining stock (last entry in chronological order = running total)
         const stockEntries = await PaperStock.find({ adminId, paperId })
-          .sort({ date: -1, createdAt: -1 })
-          .limit(1);
+          .sort({ date: 1, createdAt: 1 });
         
         const paper = await Paper.findById(paperId);
         if (!paper) {
@@ -235,8 +234,8 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const currentRemaining = stockEntries.length > 0 
-          ? stockEntries[0].remaining 
+        const currentRemaining = stockEntries.length > 0
+          ? stockEntries[stockEntries.length - 1].remaining
           : (paper.originalStock || 0);
 
         const issuedPaper = paperDetail.issuedQuantity || 0;
@@ -347,7 +346,7 @@ export async function POST(request: NextRequest) {
               },
               { new: true }
             );
-            currentRemaining = updatedEntry?.remaining || currentRemaining;
+            currentRemaining = updatedEntry?.remaining ?? currentRemaining;
           }
         }
       }

@@ -97,20 +97,35 @@ export async function PUT(
     const issuedPaper = validatedData.issuedPaper !== undefined ? validatedData.issuedPaper : stockEntry.issuedPaper;
     const wastage = validatedData.wastage !== undefined ? validatedData.wastage : stockEntry.wastage;
     
+    let previousRemainingForValidation: number;
     if (entryIndex === 0) {
+      previousRemainingForValidation = paper.originalStock || 0;
       if (addedStock > 0) {
-        remaining = (paper.originalStock || 0) + addedStock;
+        remaining = previousRemainingForValidation + addedStock;
       } else {
-        remaining = (paper.originalStock || 0) - issuedPaper - wastage;
+        remaining = previousRemainingForValidation - issuedPaper - wastage;
       }
     } else {
       // Re-read the previous entry to ensure we have the latest data (handles concurrent updates)
       const prevEntry = await PaperStock.findById(allEntries[entryIndex - 1]._id);
-      const previousRemaining = prevEntry?.remaining || allEntries[entryIndex - 1].remaining;
+      previousRemainingForValidation = prevEntry?.remaining ?? allEntries[entryIndex - 1].remaining;
       if (addedStock > 0) {
-        remaining = previousRemaining + addedStock;
+        remaining = previousRemainingForValidation + addedStock;
       } else {
-        remaining = previousRemaining - issuedPaper - wastage;
+        remaining = previousRemainingForValidation - issuedPaper - wastage;
+      }
+    }
+
+    // Block deduction if stock would go negative
+    if (addedStock <= 0) {
+      const totalDeduct = issuedPaper + wastage;
+      if (previousRemainingForValidation < totalDeduct) {
+        return NextResponse.json(
+          {
+            error: `Insufficient paper stock. Available: ${previousRemainingForValidation}, required: ${totalDeduct} (issued: ${issuedPaper} + wastage: ${wastage}). Paper issues are not allowed when stock is not enough.`,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -164,7 +179,7 @@ export async function PUT(
         { new: true } // Return updated document to ensure we have fresh data
       );
       // Use the updated remaining value for next iteration
-      currentRemaining = updatedEntry?.remaining || currentRemaining;
+      currentRemaining = updatedEntry?.remaining ?? currentRemaining;
     }
 
     return NextResponse.json(
@@ -244,7 +259,7 @@ export async function DELETE(
           { new: true } // Return updated document to ensure we have fresh data
         );
         // Use the updated remaining value for next iteration
-        currentRemaining = updatedEntry?.remaining || currentRemaining;
+        currentRemaining = updatedEntry?.remaining ?? currentRemaining;
       }
     }
 
