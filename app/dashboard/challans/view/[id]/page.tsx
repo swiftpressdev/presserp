@@ -15,6 +15,7 @@ interface Challan {
   challanDate: string;
   clientId?: { _id: string; clientName: string } | string;
   jobId?: { _id: string; jobNo: string; jobName: string } | string;
+  jobIds?: Array<{ _id: string; jobNo: string; jobName: string }>;
   destination: string;
   remarks?: string;
   particulars: ChallanParticular[];
@@ -142,11 +143,15 @@ export default function ViewChallanPage() {
               </div>
             )}
 
-            {challan.jobId && (
+            {((challan.jobIds && challan.jobIds.length > 0) || challan.jobId) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Job Number</label>
+                <label className="block text-sm font-medium text-gray-700">Job Number(s)</label>
                 <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                  {typeof challan.jobId === 'object' ? `${challan.jobId.jobNo} - ${challan.jobId.jobName}` : 'N/A'}
+                  {challan.jobIds && challan.jobIds.length > 0
+                    ? challan.jobIds.map((j) => `${j.jobNo} - ${j.jobName}`).join('; ')
+                    : typeof challan.jobId === 'object'
+                      ? `${challan.jobId.jobNo} - ${challan.jobId.jobName}`
+                      : 'N/A'}
                 </div>
               </div>
             )}

@@ -15,6 +15,7 @@ const challanSchema = z.object({
   challanDate: z.string().min(1, 'Challan date is required'),
   clientId: z.string().optional(),
   jobId: z.string().optional(),
+  jobIds: z.array(z.string()).optional(),
   destination: z.string().min(1, 'Destination is required'),
   remarks: z.string().optional(),
   particulars: z.array(challanParticularSchema).min(1, 'At least one particular is required'),
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
     const challans = await Challan.find({ adminId })
       .populate('clientId', 'clientName')
       .populate('jobId', 'jobNo jobName')
+      .populate('jobIds', 'jobNo jobName')
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ challans }, { status: 200 });
@@ -63,12 +65,20 @@ export async function POST(request: NextRequest) {
     // Get next sequence number
     const challanNumber = await getNextSequenceNumber(adminId, CounterName.CHALLAN);
 
+    const jobIds = validatedData.jobIds?.length
+      ? validatedData.jobIds
+      : validatedData.jobId
+        ? [validatedData.jobId]
+        : undefined;
+    const jobId = jobIds?.length ? jobIds[0] : validatedData.jobId || undefined;
+
     const challan = await Challan.create({
       adminId,
       challanNumber,
       challanDate: validatedData.challanDate,
       clientId: validatedData.clientId || undefined,
-      jobId: validatedData.jobId || undefined,
+      jobId: jobId || undefined,
+      jobIds: jobIds || [],
       destination: validatedData.destination,
       remarks: validatedData.remarks || undefined,
       particulars: validatedData.particulars,

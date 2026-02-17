@@ -13,6 +13,7 @@ export interface IChallan extends Document {
   challanDate: string;
   clientId?: Types.ObjectId | string;
   jobId?: Types.ObjectId | string;
+  jobIds?: Types.ObjectId[];
   destination: string;
   remarks?: string;
   estimateReferenceNo?: string;
@@ -65,6 +66,10 @@ const ChallanSchema = new Schema<IChallan>(
       ref: 'Job',
       required: false,
     },
+    jobIds: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Job',
+    }],
     destination: {
       type: String,
       required: true,
