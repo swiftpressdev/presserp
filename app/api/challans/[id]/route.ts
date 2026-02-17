@@ -14,6 +14,7 @@ const updateChallanSchema = z.object({
   challanDate: z.string().min(1, 'Challan date is required'),
   clientId: z.string().optional(),
   jobId: z.string().optional(),
+  jobIds: z.array(z.string()).optional(),
   destination: z.string().min(1, 'Destination is required'),
   remarks: z.string().optional(),
   particulars: z.array(challanParticularSchema).min(1, 'At least one particular is required'),
@@ -38,7 +39,8 @@ export async function GET(
 
     const challan = await Challan.findOne({ _id: id, adminId })
       .populate('clientId', 'clientName address')
-      .populate('jobId', 'jobNo jobName');
+      .populate('jobId', 'jobNo jobName')
+      .populate('jobIds', 'jobNo jobName');
 
     if (!challan) {
       return NextResponse.json(
@@ -83,19 +85,30 @@ export async function PUT(
     // Calculate total units
     const totalUnits = validatedData.particulars.reduce((sum, p) => sum + p.quantity, 0);
 
+    const jobIds = validatedData.jobIds?.length
+      ? validatedData.jobIds
+      : validatedData.jobId
+        ? [validatedData.jobId]
+        : undefined;
+    const jobId = jobIds?.length ? jobIds[0] : validatedData.jobId || undefined;
+
     const challan = await Challan.findOneAndUpdate(
       { _id: id, adminId },
       {
         challanDate: validatedData.challanDate,
         clientId: validatedData.clientId || undefined,
-        jobId: validatedData.jobId || undefined,
+        jobId: jobId || undefined,
+        jobIds: jobIds || [],
         destination: validatedData.destination,
         remarks: validatedData.remarks || undefined,
         particulars: validatedData.particulars,
         totalUnits,
       },
       { new: true }
-    );
+    )
+      .populate('clientId', 'clientName address')
+      .populate('jobId', 'jobNo jobName')
+      .populate('jobIds', 'jobNo jobName');
 
     if (!challan) {
       return NextResponse.json({ error: 'Challan not found' }, { status: 404 });

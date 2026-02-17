@@ -38,7 +38,7 @@ export default function EditChallanPage() {
   const [formData, setFormData] = useState({
     challanDate: '',
     clientId: '',
-    jobId: '',
+    jobIds: [] as string[],
     destination: '',
     remarks: '',
   });
@@ -112,12 +112,16 @@ export default function EditChallanPage() {
       const challan = data.challan;
       setChallanNumber(challan.challanNumber || '');
       const clientId = challan.clientId?._id || challan.clientId || '';
-      const jobId = challan.jobId?._id || challan.jobId || '';
+      const jobIds = (challan.jobIds && challan.jobIds.length > 0)
+        ? challan.jobIds.map((j: { _id?: string } | string) => typeof j === 'object' && j?._id ? j._id : String(j))
+        : challan.jobId
+          ? [typeof challan.jobId === 'object' && challan.jobId?._id ? challan.jobId._id : String(challan.jobId)]
+          : [];
 
       const initialFormData = {
         challanDate: challan.challanDate || '',
         clientId: clientId.toString(),
-        jobId: jobId.toString(),
+        jobIds,
         destination: challan.destination || '',
         remarks: challan.remarks || '',
       };
@@ -150,9 +154,10 @@ export default function EditChallanPage() {
     setFormData({
       ...formData,
       clientId,
-      jobId: '', // Reset job when client changes
+      jobIds: [], // Reset jobs when client changes
       destination: selectedClient?.address || formData.destination,
-      });
+    });
+    setParticulars([{ sn: 1, particulars: '', quantity: 0 }]);
 
     // Filter jobs by selected client
     if (clientId) {
@@ -167,8 +172,21 @@ export default function EditChallanPage() {
   };
 
   const handleJobChange = (selectedJobIds: string[]) => {
-    const jobId = selectedJobIds.length > 0 ? selectedJobIds[0] : '';
-    setFormData({ ...formData, jobId });
+    setFormData({ ...formData, jobIds: selectedJobIds });
+    // Auto-populate particulars with selected job names (one row per job)
+    if (selectedJobIds.length > 0) {
+      const rows: ChallanParticular[] = selectedJobIds.map((id, index) => {
+        const job = filteredJobs.find((j) => j._id === id);
+        return {
+          sn: index + 1,
+          particulars: job ? job.jobName : '',
+          quantity: 0,
+        };
+      });
+      setParticulars(rows);
+    } else {
+      setParticulars([{ sn: 1, particulars: '', quantity: 0 }]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,7 +218,7 @@ export default function EditChallanPage() {
         body: JSON.stringify({
           challanDate: formData.challanDate,
           clientId: formData.clientId || undefined,
-          jobId: formData.jobId || undefined,
+          jobIds: formData.jobIds.length > 0 ? formData.jobIds : undefined,
           destination: formData.destination,
           remarks: formData.remarks || undefined,
           particulars: indexedParticulars,
@@ -300,10 +318,10 @@ export default function EditChallanPage() {
                   label: job.jobNo,
                   sublabel: job.jobName,
                 }))}
-                selectedValues={formData.jobId ? [formData.jobId] : []}
+                selectedValues={formData.jobIds}
                 onChange={handleJobChange}
-                label="Job Number"
-                placeholder="Search job..."
+                label="Job Number (multiple)"
+                placeholder="Search and select jobs..."
                 emptyMessage={formData.clientId ? 'No jobs available for this client' : 'Please select a client first'}
                 disabled={!formData.clientId}
               />

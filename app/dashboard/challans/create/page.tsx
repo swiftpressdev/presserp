@@ -33,7 +33,7 @@ export default function CreateChallanPage() {
   const [formData, setFormData] = useState({
     challanDate: getCurrentBSDate(),
     clientId: '',
-    jobId: '',
+    jobIds: [] as string[],
     destination: '',
     remarks: '',
   });
@@ -88,9 +88,10 @@ export default function CreateChallanPage() {
     setFormData({
       ...formData,
       clientId,
-      jobId: '', // Reset job when client changes
+      jobIds: [], // Reset jobs when client changes
       destination: selectedClient?.address || '',
     });
+    setParticulars([{ sn: 1, particulars: '', quantity: 0 }]);
 
     // Filter jobs by selected client
     if (clientId) {
@@ -105,8 +106,21 @@ export default function CreateChallanPage() {
   };
 
   const handleJobChange = (selectedJobIds: string[]) => {
-    const jobId = selectedJobIds.length > 0 ? selectedJobIds[0] : '';
-    setFormData({ ...formData, jobId });
+    setFormData({ ...formData, jobIds: selectedJobIds });
+    // Auto-populate particulars with selected job names (one row per job)
+    if (selectedJobIds.length > 0) {
+      const rows: ChallanParticular[] = selectedJobIds.map((id, index) => {
+        const job = filteredJobs.find((j) => j._id === id);
+        return {
+          sn: index + 1,
+          particulars: job ? job.jobName : '',
+          quantity: 0,
+        };
+      });
+      setParticulars(rows);
+    } else {
+      setParticulars([{ sn: 1, particulars: '', quantity: 0 }]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,7 +152,7 @@ export default function CreateChallanPage() {
         body: JSON.stringify({
           challanDate: formData.challanDate,
           clientId: formData.clientId || undefined,
-          jobId: formData.jobId || undefined,
+          jobIds: formData.jobIds.length > 0 ? formData.jobIds : undefined,
           destination: formData.destination,
           remarks: formData.remarks || undefined,
           particulars: indexedParticulars,
@@ -211,10 +225,10 @@ export default function CreateChallanPage() {
                   label: job.jobNo,
                   sublabel: job.jobName,
                 }))}
-                selectedValues={formData.jobId ? [formData.jobId] : []}
+                selectedValues={formData.jobIds}
                 onChange={handleJobChange}
-                label="Job Number"
-                placeholder="Search job..."
+                label="Job Number (multiple)"
+                placeholder="Search and select jobs..."
                 emptyMessage={formData.clientId ? 'No jobs available for this client' : 'Please select a client first'}
                 disabled={!formData.clientId}
               />

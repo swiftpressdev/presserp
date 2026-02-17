@@ -17,6 +17,7 @@ interface Challan {
   challanDate: string;
   clientId?: { _id: string; clientName: string } | string;
   jobId?: { _id: string; jobNo: string; jobName: string } | string;
+  jobIds?: Array<{ _id: string; jobNo: string; jobName: string }>;
   destination: string;
   remarks?: string;
   particulars: ChallanParticular[];
@@ -75,8 +76,12 @@ export default function ChallansPage() {
   const handleExportPDF = async (challan: Challan) => {
     try {
       const clientName = challan.clientId ? (typeof challan.clientId === 'object' ? challan.clientId.clientName : 'N/A') : '';
-      const jobNo = challan.jobId ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : 'N/A') : '';
-      
+      const jobNo = (challan.jobIds && challan.jobIds.length > 0)
+        ? challan.jobIds.map((j) => j.jobNo).join(', ')
+        : challan.jobId
+          ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : 'N/A')
+          : '';
+
       await generateChallanPDF({
         challanNumber: challan.challanNumber,
         challanDate: formatBSDate(challan.challanDate),
@@ -156,8 +161,12 @@ export default function ChallansPage() {
         }
 
         if (key === 'jobNo') {
-          const jobNo = challan.jobId ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : '') : '';
-          return jobNo.toLowerCase().includes(searchValue.toString().toLowerCase());
+          const jobNos = (challan.jobIds && challan.jobIds.length > 0)
+            ? challan.jobIds.map((j) => j.jobNo).join(' ')
+            : challan.jobId
+              ? (typeof challan.jobId === 'object' ? challan.jobId.jobNo : '')
+              : '';
+          return jobNos.toLowerCase().includes(searchValue.toString().toLowerCase());
         }
 
         if (key === 'challanDate') {
