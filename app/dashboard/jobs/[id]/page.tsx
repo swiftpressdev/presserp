@@ -232,23 +232,23 @@ export default function EditJobPage() {
         paperDetails,
         totalBWPages: job.totalBWPages !== undefined && job.totalBWPages !== null ? job.totalBWPages : 0,
         totalColorPages: job.totalColorPages !== undefined && job.totalColorPages !== null ? job.totalColorPages : 0,
-        pageColor: job.pageColor || '',
+        pageColor: job.pageColor ?? 'None',
         pageColorOther: job.pageColorOther || '',
-        bookSize: job.bookSize || '',
+        bookSize: job.bookSize ?? 'None',
         bookSizeOther: job.bookSizeOther || '',
         totalPlate: job.totalPlate || '',
         totalFarma: job.totalFarma || '',
         plateBy: job.plateBy || PlateBy.COMPANY,
         plateFrom: job.plateFrom || '',
-        plateSize: job.plateSize || '',
+        plateSize: job.plateSize ?? 'None',
         plateSizeOther: job.plateSizeOther || '',
         machineId,
-        laminationThermal: job.laminationThermal || '',
-        normal: job.normal || '',
+        laminationThermal: job.laminationThermal ?? 'None',
+        normal: job.normal ?? 'None',
         folding,
-        binding: job.binding || '',
+        binding: job.binding ?? 'None',
         bindingOther: job.bindingOther || '',
-        stitch: job.stitch || '',
+        stitch: job.stitch ?? 'None',
         stitchOther: job.stitchOther || '',
         additional,
         relatedToJobId,
@@ -391,19 +391,19 @@ export default function EditJobPage() {
         paperDetails: (formData.paperBy === 'customer' || formData.paperBy === 'company') && formData.paperDetails.length > 0 ? formData.paperDetails : undefined,
         totalBWPages: formData.totalBWPages !== undefined ? formData.totalBWPages : undefined,
         totalColorPages: formData.totalColorPages !== undefined ? formData.totalColorPages : undefined,
-        pageColor: formData.pageColor || undefined,
+        pageColor: formData.pageColor === '' ? 'None' : formData.pageColor,
         pageColorOther: formData.pageColor === PageColorType.OTHER ? formData.pageColorOther : undefined,
-        bookSize: formData.bookSize || undefined,
+        bookSize: formData.bookSize === '' ? 'None' : formData.bookSize,
         bookSizeOther: formData.bookSize === BookSizeType.OTHER ? formData.bookSizeOther : undefined,
         totalPlate: formData.totalPlate || undefined,
         totalFarma: formData.totalFarma || undefined,
-        plateSize: formData.plateSize || undefined,
+        plateSize: formData.plateSize === '' ? 'None' : formData.plateSize,
         plateSizeOther: formData.plateSize === PlateSizeType.OTHER ? formData.plateSizeOther : undefined,
-        laminationThermal: formData.laminationThermal || undefined,
-        normal: formData.normal || undefined,
-        binding: formData.binding || undefined,
+        laminationThermal: formData.laminationThermal === '' ? 'None' : formData.laminationThermal,
+        normal: formData.normal === '' ? 'None' : formData.normal,
+        binding: formData.binding === '' ? 'None' : formData.binding,
         bindingOther: formData.binding === BindingType.OTHER ? formData.bindingOther : undefined,
-        stitch: formData.stitch || undefined,
+        stitch: formData.stitch === '' ? 'None' : formData.stitch,
         stitchOther: formData.stitch === StitchType.OTHER ? formData.stitchOther : undefined,
         relatedToJobId: formData.relatedToJobId && formData.relatedToJobId.length > 0 ? formData.relatedToJobId : undefined,
       };
@@ -770,7 +770,7 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, pageColor: e.target.value as PageColorType | '', pageColorOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(PageColorType).map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -801,7 +801,7 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, bookSize: e.target.value as BookSizeType | '', bookSizeOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(BookSizeType).map((size) => (
                   <option key={size} value={size}>
                     {size}
@@ -893,7 +893,7 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, plateSize: e.target.value as PlateSizeType | '', plateSizeOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(PlateSizeType).map((size) => (
                   <option key={size} value={size}>
                     {size}
@@ -945,7 +945,7 @@ export default function EditJobPage() {
                 }
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(LaminationType).map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -963,7 +963,7 @@ export default function EditJobPage() {
                 }
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(NormalType).map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -1003,7 +1003,7 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, binding: e.target.value as BindingType | '', bindingOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(BindingType).map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -1035,7 +1035,7 @@ export default function EditJobPage() {
                 onChange={(e) => setFormData({ ...formData, stitch: e.target.value as StitchType | '', stitchOther: '' })}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="None">None</option>
                 {Object.values(StitchType).map((type) => (
                   <option key={type} value={type}>
                     {type}
