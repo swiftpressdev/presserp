@@ -195,7 +195,7 @@ const JobSchema = new Schema<IJob>(
     },
     pageColor: {
       type: String,
-      enum: Object.values(PageColorType),
+      enum: [...Object.values(PageColorType), 'None'],
     },
     pageColorOther: {
       type: String,
@@ -203,7 +203,7 @@ const JobSchema = new Schema<IJob>(
     },
     bookSize: {
       type: String,
-      enum: Object.values(BookSizeType),
+      enum: [...Object.values(BookSizeType), 'None'],
     },
     bookSizeOther: {
       type: String,
@@ -228,7 +228,7 @@ const JobSchema = new Schema<IJob>(
     },
     plateSize: {
       type: String,
-      enum: Object.values(PlateSizeType),
+      enum: [...Object.values(PlateSizeType), 'None'],
       trim: true,
     },
     plateSizeOther: {
@@ -242,11 +242,11 @@ const JobSchema = new Schema<IJob>(
     },
     laminationThermal: {
       type: String,
-      enum: Object.values(LaminationType),
+      enum: [...Object.values(LaminationType), 'None'],
     },
     normal: {
       type: String,
-      enum: Object.values(NormalType),
+      enum: [...Object.values(NormalType), 'None'],
     },
     folding: {
       type: Boolean,
@@ -254,7 +254,7 @@ const JobSchema = new Schema<IJob>(
     },
     binding: {
       type: String,
-      enum: Object.values(BindingType),
+      enum: [...Object.values(BindingType), 'None'],
     },
     bindingOther: {
       type: String,
@@ -262,7 +262,7 @@ const JobSchema = new Schema<IJob>(
     },
     stitch: {
       type: String,
-      enum: Object.values(StitchType),
+      enum: [...Object.values(StitchType), 'None'],
     },
     stitchOther: {
       type: String,

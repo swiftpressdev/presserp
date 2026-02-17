@@ -1148,6 +1148,12 @@ export async function generateJobPDF(data: JobData) {
       doc.text(labelText, currentX, currentY);
       currentX += labelWidth + 5;
       
+      if (data.laminationThermal === 'None') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('None', currentX, currentY);
+        currentX += doc.getTextWidth('None') + 10;
+      } else {
       const laminationOptions = ['Matt', 'Gloss'];
       laminationOptions.forEach((option) => {
         const textWidth = doc.getTextWidth(option);
@@ -1178,6 +1184,7 @@ export async function generateJobPDF(data: JobData) {
         doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
         currentX += checkboxHeight + checkboxGap + textWidth + 8;
       });
+      }
     }
     
     // Normal
@@ -1196,6 +1203,12 @@ export async function generateJobPDF(data: JobData) {
       doc.text(labelText, currentX, currentY);
       currentX += labelWidth + 5;
       
+      if (data.normal === 'None') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('None', currentX, currentY);
+        currentX += doc.getTextWidth('None') + 10;
+      } else {
       const normalOptions = ['Matt', 'Gloss'];
       normalOptions.forEach((option) => {
         const textWidth = doc.getTextWidth(option);
@@ -1226,6 +1239,7 @@ export async function generateJobPDF(data: JobData) {
         doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
         currentX += checkboxHeight + checkboxGap + textWidth + 8;
       });
+      }
     }
     
     yPos = currentY + 5.5; // Reduced spacing
@@ -1252,6 +1266,12 @@ export async function generateJobPDF(data: JobData) {
       doc.text(labelText, currentX, currentY);
       currentX += labelWidth + 5;
       
+      if (bindingValue === 'None') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('None', currentX, currentY);
+        currentX += doc.getTextWidth('None') + 10;
+      } else {
       const bindingOptions = ['Perfect', 'Hard Cover'];
       bindingOptions.forEach((option) => {
         const textWidth = doc.getTextWidth(option);
@@ -1282,6 +1302,7 @@ export async function generateJobPDF(data: JobData) {
         doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
         currentX += checkboxHeight + checkboxGap + textWidth + 8;
       });
+      }
     }
     
     // Stitch
@@ -1301,6 +1322,12 @@ export async function generateJobPDF(data: JobData) {
       doc.text(labelText, currentX, currentY);
       currentX += labelWidth + 5;
       
+      if (stitchValue === 'None') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('None', currentX, currentY);
+        currentX += doc.getTextWidth('None') + 10;
+      } else {
       const stitchOptions = ['Center', 'Side'];
       stitchOptions.forEach((option) => {
         const textWidth = doc.getTextWidth(option);
@@ -1331,6 +1358,7 @@ export async function generateJobPDF(data: JobData) {
         doc.text(option, currentX + checkboxHeight + checkboxGap, currentY);
         currentX += checkboxHeight + checkboxGap + textWidth + 8;
       });
+      }
     }
     
     yPos = currentY + 5.5; // Reduced spacing
