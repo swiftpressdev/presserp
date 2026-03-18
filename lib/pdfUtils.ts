@@ -106,6 +106,48 @@ export async function generateQuotationPDF(data: QuotationData) {
     await addLetterheadBackground(doc, assets.letterhead);
   }
 
+  // Add company logo if available (top left)
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      let format = 'PNG';
+      if (logoData.startsWith('data:image/')) {
+        const match = logoData.match(/data:image\/(\w+);/);
+        if (match && match[1]) {
+          format = match[1].toUpperCase();
+          if (format === 'JPEG') format = 'JPEG';
+          else if (format !== 'PNG') format = 'PNG';
+        }
+      }
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoData;
+      });
+      
+      const maxWidth = 30;
+      const maxHeight = 15;
+      let logoWidth = img.width;
+      let logoHeight = img.height;
+      const aspectRatio = logoWidth / logoHeight;
+      
+      if (logoWidth > maxWidth) {
+        logoWidth = maxWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
+      if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
+      }
+      
+      doc.addImage(logoData, format, 20, 5 + letterheadOffset, logoWidth, logoHeight, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add company logo:', error);
+    }
+  }
+
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text('QUOTATION', 105, 20 + letterheadOffset, { align: 'center' });
@@ -246,11 +288,18 @@ interface DeliveryNote {
   remarks?: string;
 }
 
+interface JobDetail {
+  jobNo: string;
+  jobName: string;
+  quantity: number;
+}
+
 interface EstimateData {
   estimateNumber: string;
   estimateDate: string;
   clientName: string;
   jobNumber: string | string[];
+  jobDetails?: JobDetail[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -282,6 +331,49 @@ export async function generateEstimatePDF(data: EstimateData) {
     await addLetterheadBackground(doc, assets.letterhead);
   }
 
+  // Add company logo if available (top left)
+  let headerY = 15 + letterheadOffset;
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      let format = 'PNG';
+      if (logoData.startsWith('data:image/')) {
+        const match = logoData.match(/data:image\/(\w+);/);
+        if (match && match[1]) {
+          format = match[1].toUpperCase();
+          if (format === 'JPEG') format = 'JPEG';
+          else if (format !== 'PNG') format = 'PNG';
+        }
+      }
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoData;
+      });
+      
+      const maxWidth = 30;
+      const maxHeight = 15;
+      let logoWidth = img.width;
+      let logoHeight = img.height;
+      const aspectRatio = logoWidth / logoHeight;
+      
+      if (logoWidth > maxWidth) {
+        logoWidth = maxWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
+      if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
+      }
+      
+      doc.addImage(logoData, format, 20, headerY - 10, logoWidth, logoHeight, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add company logo:', error);
+    }
+  }
+
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text('ESTIMATE', 105, 20 + letterheadOffset, { align: 'center' });
@@ -303,19 +395,56 @@ export async function generateEstimatePDF(data: EstimateData) {
   doc.text(data.estimateDate, dateX, 42 + letterheadOffset);
 
   doc.text(`Client: ${data.clientName}`, 20, 49 + letterheadOffset);
-  const jobNumbers = Array.isArray(data.jobNumber) ? data.jobNumber.join(', ') : data.jobNumber;
-  doc.text(`Job ${Array.isArray(data.jobNumber) && data.jobNumber.length > 1 ? 'Nos' : 'No'}: ${jobNumbers}`, 20, 56 + letterheadOffset);
-  doc.text(`Paper Size: ${data.paperSize}`, 20, 63 + letterheadOffset);
+  doc.text(`Paper Size: ${data.paperSize}`, 20, 56 + letterheadOffset);
   doc.text(
     `Pages: ${data.totalPages} (BW: ${data.totalBWPages}, Color: ${data.totalColorPages})`,
     20,
-    70 + letterheadOffset
+    63 + letterheadOffset
   );
   
-  let nextY = 77 + letterheadOffset;
+  let nextY = 70 + letterheadOffset;
   if (data.finishSize) {
     doc.text(`Finish Size: ${data.finishSize}`, 20, nextY);
     nextY += 7;
+  }
+
+  // Add Job Details table if job details are available
+  if (data.jobDetails && data.jobDetails.length > 0) {
+    nextY += 3;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Job Details', 20, nextY);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    nextY += 5;
+
+    const jobTableData = data.jobDetails.map((job, index) => [
+      (index + 1).toString(),
+      job.jobNo,
+      job.jobName,
+      job.quantity.toString(),
+    ]);
+
+    autoTable(doc, {
+      startY: nextY,
+      head: [['SN', 'Job No', 'Job Name', 'Quantity']],
+      body: jobTableData,
+      theme: 'grid',
+      margin: { left: 20, right: 20 },
+      headStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2, fontSize: 9 },
+      bodyStyles: { fillColor: false, textColor: [0, 0, 0], lineWidth: 0.2, fontSize: 9 },
+      styles: { lineWidth: 0.2, lineColor: [0, 0, 0] },
+      tableLineWidth: 0.2,
+      tableLineColor: [0, 0, 0],
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 30, halign: 'right' },
+      },
+    });
+
+    nextY = (doc as any).lastAutoTable.finalY + 7;
   }
 
   const tableData = data.particulars.map((item) => [
@@ -1441,6 +1570,48 @@ export async function generateChallanPDF(data: ChallanData) {
     await addLetterheadBackground(doc, assets.letterhead);
   }
 
+  // Add company logo if available (top left)
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      let format = 'PNG';
+      if (logoData.startsWith('data:image/')) {
+        const match = logoData.match(/data:image\/(\w+);/);
+        if (match && match[1]) {
+          format = match[1].toUpperCase();
+          if (format === 'JPEG') format = 'JPEG';
+          else if (format !== 'PNG') format = 'PNG';
+        }
+      }
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoData;
+      });
+      
+      const maxWidth = 30;
+      const maxHeight = 15;
+      let logoWidth = img.width;
+      let logoHeight = img.height;
+      const aspectRatio = logoWidth / logoHeight;
+      
+      if (logoWidth > maxWidth) {
+        logoWidth = maxWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
+      if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
+      }
+      
+      doc.addImage(logoData, format, 20, 5 + letterheadOffset, logoWidth, logoHeight, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add company logo:', error);
+    }
+  }
+
   doc.setFontSize(20);
   doc.text('CHALLAN', 105, 20 + letterheadOffset, { align: 'center' });
 
@@ -1531,6 +1702,48 @@ export async function generateChallanReportPDF(data: ChallanReportPDFData) {
   // Add letterhead background if configured
   if (assets.letterhead) {
     await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  // Add company logo if available (top left)
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      let format = 'PNG';
+      if (logoData.startsWith('data:image/')) {
+        const match = logoData.match(/data:image\/(\w+);/);
+        if (match && match[1]) {
+          format = match[1].toUpperCase();
+          if (format === 'JPEG') format = 'JPEG';
+          else if (format !== 'PNG') format = 'PNG';
+        }
+      }
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoData;
+      });
+      
+      const maxWidth = 30;
+      const maxHeight = 15;
+      let logoWidth = img.width;
+      let logoHeight = img.height;
+      const aspectRatio = logoWidth / logoHeight;
+      
+      if (logoWidth > maxWidth) {
+        logoWidth = maxWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
+      if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
+      }
+      
+      doc.addImage(logoData, format, 20, 5 + letterheadOffset, logoWidth, logoHeight, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add company logo:', error);
+    }
   }
 
   doc.setFontSize(20);
@@ -1670,6 +1883,48 @@ export async function generatePaperStockPDF(data: PaperStockPDFData) {
   // Add letterhead background if configured (first page only)
   if (assets.letterhead) {
     await addLetterheadBackground(doc, assets.letterhead);
+  }
+
+  // Add company logo if available (top left)
+  if (assets.companyLogo) {
+    try {
+      const logoData = await loadImageForPDF(assets.companyLogo);
+      let format = 'PNG';
+      if (logoData.startsWith('data:image/')) {
+        const match = logoData.match(/data:image\/(\w+);/);
+        if (match && match[1]) {
+          format = match[1].toUpperCase();
+          if (format === 'JPEG') format = 'JPEG';
+          else if (format !== 'PNG') format = 'PNG';
+        }
+      }
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = logoData;
+      });
+      
+      const maxWidth = 30;
+      const maxHeight = 15;
+      let logoWidth = img.width;
+      let logoHeight = img.height;
+      const aspectRatio = logoWidth / logoHeight;
+      
+      if (logoWidth > maxWidth) {
+        logoWidth = maxWidth;
+        logoHeight = logoWidth / aspectRatio;
+      }
+      if (logoHeight > maxHeight) {
+        logoHeight = maxHeight;
+        logoWidth = logoHeight * aspectRatio;
+      }
+      
+      doc.addImage(logoData, format, 20, 5 + letterheadOffset, logoWidth, logoHeight, undefined, 'FAST');
+    } catch (error) {
+      console.error('Failed to add company logo:', error);
+    }
   }
 
   let startY = addHeaderAndDetails(doc, true);

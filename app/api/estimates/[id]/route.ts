@@ -58,7 +58,7 @@ export async function GET(
 
     const estimate = await Estimate.findOne({ _id: id, adminId })
       .populate('clientId', 'clientName')
-      .populate('jobId', 'jobNo jobName totalBWPages totalColorPages totalPages paperSize');
+      .populate('jobId', 'jobNo jobName quantity totalBWPages totalColorPages totalPages paperSize');
 
     if (!estimate) {
       return NextResponse.json(
@@ -207,7 +207,7 @@ export async function PUT(
       },
       { new: true }
     ).populate('clientId', 'clientName')
-     .populate('jobId', 'jobNo jobName');
+     .populate('jobId', 'jobNo jobName quantity');
 
     if (!estimate) {
       return NextResponse.json(
