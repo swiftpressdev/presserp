@@ -16,7 +16,7 @@ interface Estimate {
   estimateNumber: string;
   estimateDate: string;
   clientId: string | { _id: string; clientName: string };
-  jobId: string | { _id: string; jobNo: string; jobName: string } | (string | { _id: string; jobNo: string; jobName: string })[];
+  jobId: string | { _id: string; jobNo: string; jobName: string; quantity?: number } | (string | { _id: string; jobNo: string; jobName: string; quantity?: number })[];
   totalBWPages: number;
   totalColorPages: number;
   totalPages: number;
@@ -124,11 +124,21 @@ export default function EstimatesPage() {
       const jobIds = Array.isArray(estimate.jobId) ? estimate.jobId : [estimate.jobId];
       const jobNumbers = jobIds.map((j: any) => typeof j === 'object' ? j.jobNo : '-');
       
+      // Build job details for PDF table
+      const jobDetails = jobIds
+        .filter((j: any) => typeof j === 'object')
+        .map((j: any) => ({
+          jobNo: j.jobNo || '-',
+          jobName: j.jobName || '-',
+          quantity: j.quantity || 0,
+        }));
+      
       await generateEstimatePDF({
         estimateNumber: estimate.estimateNumber,
         estimateDate: formatBSDate(estimate.estimateDate),
         clientName,
         jobNumber: jobNumbers,
+        jobDetails: jobDetails.length > 0 ? jobDetails : undefined,
         totalBWPages: estimate.totalBWPages,
         totalColorPages: estimate.totalColorPages,
         totalPages: estimate.totalPages,

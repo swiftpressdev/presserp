@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     const estimates = await Estimate.find({ adminId })
       .populate('clientId', 'clientName')
-      .populate('jobId', 'jobNo jobName')
+      .populate('jobId', 'jobNo jobName quantity')
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ estimates }, { status: 200 });
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     const populatedEstimate = await Estimate.findById(estimate._id)
       .populate('clientId', 'clientName')
-      .populate('jobId', 'jobNo jobName');
+      .populate('jobId', 'jobNo jobName quantity');
 
     return NextResponse.json(
       { message: 'Estimate created successfully', estimate: populatedEstimate },
