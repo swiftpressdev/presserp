@@ -28,3 +28,29 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const admin = await requireAdmin();
+    const adminId = getAdminId(admin);
+
+    const { id } = await params;
+    const user = await User.findOneAndDelete({ _id: id, adminId });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Delete user error:', error);
+    if (error.message === 'Unauthorized' || error.message === 'Admin access required') {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

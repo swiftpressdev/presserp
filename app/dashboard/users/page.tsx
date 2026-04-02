@@ -65,10 +65,11 @@ export default function UsersPage() {
         method: 'DELETE',
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      const data = raw ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : null;
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete user');
+        throw new Error(data?.error || `Failed to delete user (${response.status})`);
       }
 
       toast.success('User deleted successfully');
